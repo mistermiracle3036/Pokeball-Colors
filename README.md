@@ -34,15 +34,15 @@ changed by this mod.
 | Ultra Ball | Gold with a black band |
 | Master Ball | Purple with a pale highlight |
 | Safari Ball | Olive green |
-| Quick Ball *(Custom Pokeballs)* | Yellow with deep blue |
-| Timer Ball *(Custom Pokeballs)* | White with red |
-| Net Ball *(Custom Pokeballs)* | Teal |
-| Dusk Ball *(Custom Pokeballs)* | Near-black with gold |
-| Heavy Ball *(Custom Pokeballs)* | Gunmetal grey |
-| Repeat Ball *(Custom Pokeballs)* | Orange with pale yellow |
-| Dream Ball *(Custom Pokeballs)* | Pink |
-| Level Ball *(Custom Pokeballs)* | Gold with black |
-| Dive Ball *(Custom Pokeballs)* | Sea blue |
+| Quick Ball *(Custom Poké Balls)* | Yellow with deep blue |
+| Timer Ball *(Custom Poké Balls)* | White with red |
+| Net Ball *(Custom Poké Balls)* | Teal |
+| Dusk Ball *(Custom Poké Balls)* | Near-black with gold |
+| Heavy Ball *(Custom Poké Balls)* | Gunmetal grey |
+| Repeat Ball *(Custom Poké Balls)* | Orange with pale yellow |
+| Dream Ball *(Custom Poké Balls)* | Pink |
+| Level Ball *(Custom Poké Balls)* | Gold with black |
+| Dive Ball *(Custom Poké Balls)* | Sea blue |
 | Snag Ball *(Snag Quest)* | Colored by Snag Quest itself (0.11.x+) — Team Rocket black and red, strobing through its Ultra-style throw |
 
 Balls from mods this one doesn't know about keep their vanilla colors.
@@ -82,8 +82,10 @@ and relaunch afterward so the new code is actually live.
 
 ## Compatibility
 
-- **Custom Pokeballs** — optional. Its nine balls color automatically
-  when it's installed; the entries sit harmless when it isn't.
+- **Custom Poké Balls** by magalvao
+  ([repo](https://github.com/magalvao/custom-pokeballs), mod id
+  `custom_pokeballs`) — optional. Its nine balls color automatically when
+  it's installed; the entries sit harmless when it isn't.
 - **Snag Quest** ([repo](https://github.com/mistermiracle3036/Pokemon-Snag))
   — optional, **0.11.x or newer** recommended. Snag Quest owns its Snag
   Ball completely, including its color, which it registers with this mod
@@ -130,6 +132,8 @@ ball, own it completely and declare it the same way.
 
 By **Mister Miracle** ([@mistermiracle3036](https://github.com/mistermiracle3036)).
 Built for [gen1recomp](https://github.com/bryanthaboi/gen1recomp).
-Colors for the Custom Pokeballs balls were matched by eye to that mod's
-own sprite art; no assets are used or redistributed.
+Colors for the nine balls from
+[Custom Poké Balls](https://github.com/magalvao/custom-pokeballs) by
+magalvao were matched by eye to that mod's own sprite art; no assets are
+used or redistributed.
 See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

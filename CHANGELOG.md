@@ -4,6 +4,17 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.11
+- Docs only, no code change: the mod's canonical name is **Custom Poké
+  Balls** (by magalvao, github.com/magalvao/custom-pokeballs) -- 0.1.10
+  renamed it to "New Pokeballs" from the `name` field of an older v1.0.1
+  build. Corrected and linked throughout.
+
+## 0.1.10
+- Docs only, no code change: the nine extra balls come from a mod whose
+  display name is **New Pokeballs** (its mod id is `custom_pokeballs`,
+  which is what these docs had been calling it). Corrected throughout.
+
 ## 0.1.9
 - Manifest `github` field corrected to `mistermiracle3036/Pokeball-Colors`
   so it matches the repository's actual URL slug exactly. No code change.

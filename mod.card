@@ -1,5 +1,5 @@
 return {
-  summary = "Gives every ball its own colors under the ADVANCED color mode: the 5 native balls, the 9 Custom Pokeballs balls, and Snag Quest's SNAG BALL.",
+  summary = "Gives every ball its own colors under the ADVANCED color mode: the 5 native balls, the 9 Custom Poké Balls balls, and Snag Quest's SNAG BALL.",
   author = "Mister Miracle",
   tags = { "cosmetic", "battle", "colors", "pokeballs" },
   differences = {
@@ -7,7 +7,7 @@ return {
     "Balls whose record sets flicker (Master, Ultra, and SNAG BALL from Snag Quest 0.10.2+) strobe between their own two colors instead of the palette's.",
     "Poof clouds and every other animation keep vanilla colors. Mono and non-ADVANCED color modes are untouched, as are catch rates, items and marts.",
   },
-  credits = { "Colors for the nine Custom Pokeballs balls were matched by eye to that mod's own sprite art; no assets are used or redistributed." },
+  credits = { "Colors for the nine balls from Custom Poke Balls by magalvao (github.com/magalvao/custom-pokeballs) were matched by eye to that mod's own sprite art; no assets are used or redistributed." },
   compat = {
     "Optional: custom_pokeballs (its 9 balls color when present; harmless without it).",
     "Optional: snag_quest (colors its SNAG BALL; snag_quest owns that ball's tossAnim and flicker, this mod never patches them).",

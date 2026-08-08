@@ -19,14 +19,15 @@ ON in the F10 mod manager.
 <details>
 <summary>Which balls does it know about?</summary>
 
-The five native balls, the nine from Custom Pokeballs, and Snag Quest's
+The five native balls, the nine from Custom Poké Balls (mod id
+`custom_pokeballs`), and Snag Quest's
 Snag Ball. A ball from some other mod keeps its vanilla colors — nothing
 breaks, it just isn't in the table yet. Open an issue and it can be
 added.
 </details>
 
 <details>
-<summary>Do I need Custom Pokeballs or Snag Quest installed?</summary>
+<summary>Do I need Custom Poké Balls or Snag Quest installed?</summary>
 
 No. Both are optional. The color entries for balls you don't have simply
 never come up.
