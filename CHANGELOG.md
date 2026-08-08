@@ -4,6 +4,10 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.9
+- Manifest `github` field corrected to `mistermiracle3036/Pokeball-Colors`
+  so it matches the repository's actual URL slug exactly. No code change.
+
 ## 0.1.8
 - Snag Quest owns its ball outright. Removed the hardcoded SNAG_BALL
   color entry: snag_quest 0.11.x+ registers its own color into
