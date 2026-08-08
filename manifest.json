@@ -1,0 +1,18 @@
+{
+  "id": "pokeball_colors",
+  "name": "Pokeball Colors",
+  "version": "0.1.8",
+  "api": 2,
+  "entry": "main.lua",
+  "profile": "content",
+  "category": "COSMETIC",
+  "game_version": ">=0.1.38 <2.0.0",
+  "priority": 200,
+  "affects_link": false,
+  "permissions": ["engine_internals"],
+  "dependencies": [],
+  "optional_dependencies": ["custom_pokeballs", "snag_quest"],
+  "conflicts": [],
+  "github": "mistermiracle3036/pokeball-colors",
+  "description": "Per-ball colors for the battle ball toss under the ADVANCED color mode: all five native balls plus the nine Custom Pokeballs mod balls."
+}
