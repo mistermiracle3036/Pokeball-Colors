@@ -4,6 +4,27 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.13
+- New `exports.registerColors(colors)` for other ball mods: pass a table
+  of `id -> { body, accent }` and this mod owns the only-if-absent rule,
+  validation, and logging. Replaces the hand-rolled game.ready loop each
+  mod was writing (and could get subtly wrong).
+- `mon.caughtBall` is now a documented public field, declared in
+  `exports.owns.caughtBallField`. Other mods may READ it (e.g. a ribbon
+  for a ball type); this mod owns writing it. Nil on mons caught before
+  0.1.12 or without this mod installed -- always nil-check.
+- A ball that renders with no registered color now logs one warning
+  naming the ball id, instead of silently falling back to vanilla.
+
+## 0.1.12
+- Pokemon Center: the heal machine's balls now render in the colors of
+  the ball each party member was actually caught in (ADVANCED mode; new
+  toggle "Colored balls at POKeMON CENTER", default ON). The machine's
+  jingle flash is preserved in each ball's own colors.
+- Caught-ball memory: the mod now records the ball on the mon at catch
+  time (persists through saves). Mons caught before 0.1.12 default to
+  Poke Ball red at the machine.
+
 ## 0.1.11
 - Docs only, no code change: the mod's canonical name is **Custom Poké
   Balls** (by magalvao, github.com/magalvao/custom-pokeballs) -- 0.1.10

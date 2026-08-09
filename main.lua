@@ -33,7 +33,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.11"
+  local VERSION = "0.1.13"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -41,6 +41,8 @@ return function(mod)
       label = "Colored balls (ADVANCED mode)", default = true },
     { key = "snag_ball_color", type = "toggle",
       label = "Rocket-colored SNAG BALL", default = true },
+    { key = "center_balls", type = "toggle",
+      label = "Colored balls at POKeMON CENTER", default = true },
   })
 
   local PaletteFX = require("src.render.PaletteFX")
@@ -74,7 +76,80 @@ return function(mod)
     DIVE_BALL   = { body = {  88, 152, 224 }, accent = { 216, 240, 248 } },
   }
   mod.exports.colors = COLORS
-  mod.exports.owns = { colors = true }  -- this mod owns COLOR only
+
+  -- What this mod owns, for other mods to check before touching
+  -- anything (see the ownership note in the README):
+  --   colors           -- the color table and the rendering
+  --   caughtBallField  -- mon.caughtBall, written at catch time.  Other
+  --                       mods may READ it freely (a ribbon for balls
+  --                       caught in X, etc); do not write it.  Absent on
+  --                       mons caught before 0.1.12 or with this mod
+  --                       uninstalled, so always nil-check it.
+  mod.exports.owns = { colors = true, caughtBallField = "mon.caughtBall" }
+
+  -- ------------------------------------------------------------------
+  -- Public registration API for other ball mods.
+  --
+  --   local pbc = mod.find("pokeball_colors")
+  --   if pbc then pbc.exports.registerColors({
+  --     MY_BALL = { body = {r,g,b}, accent = {r,g,b} },
+  --   }) end
+  --
+  -- Owns the only-if-absent rule so callers cannot get it wrong: a key
+  -- already present (a user override, or another mod that got there
+  -- first) is never overwritten.  Safe to call at any time -- colors are
+  -- read at draw time -- though game.ready is the conventional spot.
+  -- Returns added, skipped.
+  -- ------------------------------------------------------------------
+  local function validColor(c)
+    if type(c) ~= "table" then return false end
+    for _, k in ipairs({ "body", "accent" }) do
+      local v = c[k]
+      if type(v) ~= "table" or #v ~= 3 then return false end
+      for i = 1, 3 do
+        if type(v[i]) ~= "number" then return false end
+      end
+    end
+    return true
+  end
+
+  mod.exports.registerColors = function(colors)
+    if type(colors) ~= "table" then
+      mod.log:warn("registerColors: expected a table of id -> color")
+      return 0, 0
+    end
+    local added, skipped = 0, 0
+    for id, c in pairs(colors) do
+      if type(id) ~= "string" or not validColor(c) then
+        mod.log:warn("registerColors: bad entry for %s "
+          .. "(need { body = {r,g,b}, accent = {r,g,b} })", tostring(id))
+        skipped = skipped + 1
+      elseif COLORS[id] ~= nil then
+        skipped = skipped + 1          -- already set: never clobber
+      else
+        COLORS[id] = c
+        added = added + 1
+      end
+    end
+    if added > 0 then
+      mod.log:info("registerColors: added %d ball color(s)", added)
+    end
+    return added, skipped
+  end
+
+  -- One warning per unknown ball id actually seen on screen, so a mod
+  -- author whose ball renders in vanilla colors gets a reason instead of
+  -- silence.  Seen-set, so this never spams per frame.
+  local warnedMissing = {}
+  local function warnMissingColor(ball)
+    if ball and not warnedMissing[ball] then
+      warnedMissing[ball] = true
+      mod.log:warn("no color registered for ball %s -- it renders in "
+        .. "vanilla colors. Its mod can call "
+        .. "mod.find(\"pokeball_colors\").exports.registerColors{...}",
+        tostring(ball))
+    end
+  end
 
   -- SNAG_BALL is deliberately absent above.  Snag Quest (>= 0.11.x) owns
   -- the whole SNAG_BALL record -- tossAnim, flicker AND its color -- and
@@ -155,7 +230,10 @@ return function(mod)
       return out
     end
     local c = ball and COLORS[ball]
-    if not c then return out end
+    if not c then
+      if ball then warnMissingColor(ball) end
+      return out
+    end
 
     local accent, body = norm(c.accent), norm(c.body)
     if s.obp == "f0x" then
@@ -176,6 +254,107 @@ return function(mod)
     mod.log:info("pokeball_colors: snag_quest %s present; owns=%s",
       tostring(snag.version),
       owns and "declared (SNAG_BALL deferred to it)" or "not declared")
+  end
+
+  -- ------------------------------------------------------------------
+  -- Pokemon Center heal machine: each lit ball in the machine renders
+  -- in the colors of the ball that mon was actually caught in.
+  --
+  -- The engine does not record a mon's caught ball anywhere (grepped
+  -- 0.1.75), so we do: pokemon.caught fires with the live mon table and
+  -- the ball id (BattleState.lua:4470), and arbitrary mon fields
+  -- persist through save/load (SaveSerializer is a generic recursive
+  -- dump; precedent: snag_quest's mon.snagged).  Mons caught before
+  -- this version installed have no field and default to POKE_BALL --
+  -- canon enough, and self-corrects as the party turns over.
+  -- ------------------------------------------------------------------
+  mod.events:on("pokemon.caught", function(p)
+    if p and p.mon and p.ball and p.mon.caughtBall == nil then
+      p.mon.caughtBall = p.ball
+    end
+  end)
+
+  local gameRef
+  mod.events:on("game.ready", function(p) gameRef = p and p.game end)
+
+  -- ------------------------------------------------------------------
+  -- The draw seam.  fxHeal is a LOCAL closure inside
+  -- OverworldState:drawWorld (OverworldController.lua:4522), so it
+  -- cannot be wrapped, and drawWorld push/pops transforms internally so
+  -- drawing after it returns lands in the wrong space.  Instead: wrap
+  -- drawWorld, and ONLY while self.healAnim exists, temporarily shim
+  -- love.graphics.draw.  The shim recognizes the ball draws exactly --
+  -- image == self.healMachineImg AND quad == self.healMachineQuads[2]
+  -- (the ball quad; [1] is the monitor) -- counts them, and the i-th
+  -- ball is party slot i (stepHealAnim lights balls in party order).
+  -- Around just those draws it applies a PaletteFX palette built from
+  -- our color table, exactly the mechanism the machine's own jingle
+  -- flash uses (fxHeal sends permuted GRAYS through the same shader).
+  --
+  -- The shim exists only for the few seconds the heal anim runs, and is
+  -- restored via pcall even if vanilla throws.
+  --
+  -- Shade-slot mapping (TODO/CONFIRM on first screenshot): assumed
+  -- shade0 = white highlight (kept), shade1 = accent, shade2 = body,
+  -- shade3 = dark outline (body darkened).  If balls come out inverted,
+  -- swap accent/body here -- same fix as battle 0.1.0 -> 0.1.1.
+  -- ------------------------------------------------------------------
+  local OverworldState = require("src.world.OverworldController")
+
+  -- copy of the machine's flash beat map (a local in OverworldController:
+  -- FlashSprite8Times swaps the two middle shades in place)
+  local HEAL_FLASH_MAP = { [0] = 0, [1] = 2, [2] = 1, [3] = 3 }
+
+  local function ballPalette(c, flashed)
+    local dark = { math.floor(c.body[1] * 0.35),
+                   math.floor(c.body[2] * 0.35),
+                   math.floor(c.body[3] * 0.35) }
+    local pal = { PaletteFX.GRAYS[1], c.accent, c.body, dark }
+    if flashed then pal = PaletteFX.permute(pal, HEAL_FLASH_MAP) end
+    return pal
+  end
+
+  OverworldState._pbcOriginals = OverworldState._pbcOriginals
+    or { drawWorld = OverworldState.drawWorld }
+  local vanillaDrawWorld = OverworldState._pbcOriginals.drawWorld
+  OverworldState.drawWorld = function(self, ...)
+    local ha = self.healAnim
+    if not (ha and PaletteFX.mode == "redpp"
+            and mod.options:get("enabled")
+            and mod.options:get("center_balls")) then
+      return vanillaDrawWorld(self, ...)
+    end
+
+    local lg = love.graphics
+    local vanillaDraw = lg.draw
+    local ballIndex = 0
+    lg.draw = function(img, quad, ...)
+      if img ~= nil and img == self.healMachineImg
+         and self.healMachineQuads and quad == self.healMachineQuads[2] then
+        ballIndex = ballIndex + 1
+        local party = gameRef and gameRef.save and gameRef.save.party
+        local mon = party and party[ballIndex]
+        local ball = (mon and mon.caughtBall) or "POKE_BALL"
+        local c = COLORS[ball]
+        if not c then warnMissingColor(ball) end
+        if c then
+          local sh = PaletteFX.shader()
+          if sh then
+            local prev = lg.getShader()
+            PaletteFX.sendColors(sh, ballPalette(c, not ha.visible))
+            lg.setShader(sh)
+            vanillaDraw(img, quad, ...)
+            lg.setShader(prev)
+            return
+          end
+        end
+      end
+      return vanillaDraw(img, quad, ...)
+    end
+
+    local ok, err = pcall(vanillaDrawWorld, self, ...)
+    lg.draw = vanillaDraw
+    if not ok then error(err) end
   end
 
   mod.log:info("pokeball_colors %s loaded", VERSION)

@@ -15,6 +15,11 @@ gets a Master-Ball-tier throw as a bonus.
 > please include the version number from your load log and which other
 > mods were enabled.
 
+At the Pokemon Center, the heal machine's balls light up in the colors
+of the ball each party member was caught in — a party of Great Ball
+catches heals blue. (Balls caught before this feature installed show as
+Poke Ball red.)
+
 Purely cosmetic. No catch rates, items, marts or battle logic are
 changed by this mod.
 
@@ -96,21 +101,51 @@ and relaunch afterward so the new code is actually live.
 
 ## For mod authors
 
-Color your own ball in one line, after checking this mod is present:
+Color your own balls in one call:
 
 ```lua
-local pbc = mod.find("pokeball_colors")
-if pbc then
-  pbc.exports.colors["MY_BALL"] = {
-    body   = { 200, 60, 40 },  -- the ball's main color
-    accent = { 240, 224, 200 },  -- the smaller highlight
-  }
-end
+mod.events:on("game.ready", function()
+  local pbc = mod.find("pokeball_colors")
+  if pbc and pbc.exports.registerColors then
+    pbc.exports.registerColors({
+      MY_BALL = {
+        body   = { 200, 60, 40 },    -- the ball's main color
+        accent = { 240, 224, 200 },  -- the smaller highlight
+      },
+    })
+  end
+end)
 ```
+
+`registerColors` never overwrites a color that's already set, so a user
+override or another mod that got there first always wins. It validates
+entries and logs anything malformed. Returns `added, skipped`.
+
+Colors apply everywhere this mod renders — the battle toss, the shakes,
+the resting caught ball, and the Pokemon Center heal machine — with no
+extra work per surface.
+
+If a ball is thrown with no color registered, this mod logs one warning
+naming that ball id, so a missing registration says so instead of
+silently rendering vanilla.
 
 `body` fills the larger region of the ball sprite and `accent` the
 smaller one. If the ball's record has `flicker = true`, the two swap
 back and forth during the throw.
+
+### Reading which ball caught a Pokemon
+
+This mod records `mon.caughtBall` (the ball's item id) at catch time and
+it persists through saves. Other mods are welcome to **read** it — a
+ribbon for Pokemon caught in a particular ball, say:
+
+```lua
+if mon.caughtBall == "GS_BALL" then ... end
+```
+
+It's declared in `exports.owns.caughtBallField`. This mod owns writing
+it; don't write it from elsewhere. It's `nil` on Pokemon caught before
+v0.1.12 or while this mod wasn't installed, so always nil-check.
 
 Register on `game.ready` and **only when your key is absent**, so a user's
 own override always wins:
