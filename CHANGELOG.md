@@ -4,6 +4,40 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.18
+
+**Updating from 0.1.13?** Here's everything that's new since then.
+
+- **Thrown balls now have a black band** along the seam, the way a real
+  Poké Ball does — through the toss, the wobbles and the resting ball
+  after a catch. The POKé, GREAT, MASTER and SAFARI balls have one; the
+  ULTRA BALL is left alone on purpose, because its dark half would swallow
+  a black band whole. New toggle **"Black band on thrown balls"**
+  (default ON) puts everything back the way it was.
+- Balls from other mods keep their old two-tone look until their own mod
+  opts in, so nothing you have installed changes appearance.
+- New **"DEV: every ball sold in marts"** toggle (default OFF) stocks every
+  mart with every ball in the game, so you can actually get hold of a
+  MASTER BALL and see what it looks like. Turning it off restores the
+  normal shelves completely.
+- This mod now has a **LICENSE** (MIT) and a fuller credits section.
+- Releases are now built by a workflow rather than by hand, so the
+  download has the right shape and always includes the notices file.
+
+**New in 0.1.18 specifically**
+
+- New **"DEV: report ball render to [ERRS]"** toggle (default OFF). With
+  it on, throwing a ball writes one line per ball to the mod manager's
+  [ERRS] screen describing exactly how it was drawn. It's here to chase
+  the 0.1.17 report that the NEST BALL's colours look swapped when the
+  band is on — that shouldn't be possible, so this reports what actually
+  happened instead of guessing at a fix.
+- No rendering behaviour changed in this version.
+- Known and **not** a bug: the ULTRA BALL appears to flip upside down
+  during the throw and settle during the wobbles. That's the Master/Ultra
+  palette strobe, which the original game does and this mod has always
+  rendered in the ball's own colours. It is not caused by the band.
+
 ## 0.1.17
 - New option **"DEV: every ball sold in marts"** (default OFF). Turn it on
   and every mart stocks every ball in the game, including balls added by

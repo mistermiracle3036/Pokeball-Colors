@@ -1,0 +1,186 @@
+name: Build and release mod zip
+
+# Release by editing manifest.json. Bump "version", commit to main, and
+# this tags it, builds the zip and publishes the release. There is no
+# Releases form to find and no zip to attach by hand.
+#
+# NOTHING HERE RUNS OFF main. Unreleased work lives on `next`; merging
+# `next` into main IS the act of publishing, and is the developer's call.
+#
+# This repo released BY HAND up to v0.1.13, which is why its published zips
+# are nested inside a pokeball_colors/ folder (the convention retired
+# 2026-08-09) and why v0.1.13's zip is missing THIRD_PARTY_NOTICES.md
+# despite the file being in the repo. Both are fixed by this workflow
+# existing: it copies the repo root minus the exclusion list, and asserts
+# manifest.json is at the archive root before publishing.
+#
+# Safe to push to main repeatedly: if the version already has a tag, or a
+# release for that tag already exists, this does nothing.
+on:
+  push:
+    branches: [main]
+  # Manual re-run, e.g. if a release exists but its asset is missing.
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history so the tag check is accurate
+
+      - name: Read the manifest
+        id: info
+        run: |
+          VERSION=$(python3 -c "import json;print(json.load(open('manifest.json'))['version'])")
+          MOD_ID=$(python3 -c "import json;print(json.load(open('manifest.json'))['id'])")
+          echo "version=$VERSION"  >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION"     >> "$GITHUB_OUTPUT"
+          echo "mod_id=$MOD_ID"    >> "$GITHUB_OUTPUT"
+          echo "Manifest says $MOD_ID $VERSION"
+
+      # Nothing below runs for an ordinary docs commit -- only when the
+      # manifest version is genuinely new.
+      - name: Has this version already been released?
+        id: check
+        run: |
+          TAG="${{ steps.info.outputs.tag }}"
+          git fetch --tags --force
+          if git show-ref --tags --verify --quiet "refs/tags/$TAG"; then
+            echo "new=false" >> "$GITHUB_OUTPUT"
+            echo "$TAG already exists - nothing to do."
+          else
+            echo "new=true" >> "$GITHUB_OUTPUT"
+            echo "$TAG is new - will build and release."
+          fi
+
+      # Shipping two different builds under one version number is the bug
+      # that wastes the most time later, because "which code is actually
+      # live" stops being answerable. The manifest, the CHANGELOG heading
+      # and main.lua must agree before anything is published.
+      - name: Check manifest, CHANGELOG and main.lua agree
+        if: steps.check.outputs.new == 'true'
+        run: |
+          set -e
+          VERSION="${{ steps.info.outputs.version }}"
+          CHANGELOG=$(grep -m1 '^## ' CHANGELOG.md | sed 's/^## *//' | tr -d '[]' | awk '{print $1}')
+          echo "manifest  : $VERSION"
+          echo "changelog : $CHANGELOG"
+
+          FAIL=0
+          if [ "$VERSION" != "$CHANGELOG" ]; then
+            echo "::error::top CHANGELOG heading says $CHANGELOG but manifest.json says $VERSION"
+            FAIL=1
+          fi
+
+          # This mod assigns mod.exports.version from a local, so the value
+          # lives in `local VERSION = "x.y.z"` -- grepping the exports line
+          # for a string literal (as the other repos' workflows do) matches
+          # nothing here and would fail every release. Read the local, and
+          # verify the exports line actually points at it.
+          LUA=$(grep -oP '^\s*local VERSION\s*=\s*"\K[^"]+' main.lua | head -1)
+          echo "main.lua  : $LUA"
+          if [ -z "$LUA" ]; then
+            echo "::error::could not find 'local VERSION = \"...\"' in main.lua"
+            FAIL=1
+          elif [ "$VERSION" != "$LUA" ]; then
+            echo "::error::main.lua reports $LUA but manifest.json says $VERSION - the in-game load log would be wrong"
+            FAIL=1
+          fi
+          if ! grep -q 'mod\.exports\.version\s*=\s*VERSION' main.lua; then
+            echo "::error::main.lua does not set mod.exports.version = VERSION - the load log would not report this build"
+            FAIL=1
+          fi
+
+          # The launcher only offers in-app updates for mods whose manifest
+          # carries a "github" field. Forgetting it breaks nothing visibly --
+          # updates just never appear -- so warn loudly.
+          if ! python3 -c "import json,sys; sys.exit(0 if json.load(open('manifest.json')).get('github') else 1)"; then
+            echo "::warning::manifest.json has no \"github\" field - the launcher will never offer in-app updates"
+          fi
+
+          exit $FAIL
+
+      - name: Build the installable zip
+        if: steps.check.outputs.new == 'true'
+        id: build
+        run: |
+          set -e
+          MOD_ID="${{ steps.info.outputs.mod_id }}"
+          VERSION="${{ steps.info.outputs.version }}"
+          # The ASSET is named after the mod id, NOT the repo -- those differ
+          # (repo Kanto-Contests, id kanto_contests) and getting it wrong makes
+          # the launcher's updater fall back to picking an arbitrary zip.
+          #
+          # The archive INTERIOR is FLAT: manifest.json sits at the root, not
+          # inside a "$MOD_ID/" folder. LauncherMods.locateRoot accepts both
+          # shapes and names the install folder from manifest.id either way --
+          # but the community mod index requires files at the root.
+          rm -rf build && mkdir -p build/"$MOD_ID"
+          for entry in * .[!.]*; do
+            case "$entry" in
+              .git|.github|.gitignore|tests|build|NOTES.md|notes.md|*.zip) continue ;;
+            esac
+            [ -e "$entry" ] || continue
+            cp -r "$entry" build/"$MOD_ID"/
+          done
+          cd build/"$MOD_ID"
+          zip -r "../../$MOD_ID-$VERSION.zip" . -x '*.DS_Store'
+          cd ../..
+          ASSET="$MOD_ID-$VERSION.zip"
+          echo "asset=$ASSET" >> "$GITHUB_OUTPUT"
+          echo "sha256=$(sha256sum "$ASSET" | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+          echo "--- zip contents ---"
+          unzip -l "$ASSET"
+          # fail loudly rather than publish a wrongly-shaped archive
+          unzip -l "$ASSET" | grep -qE ' manifest\.json$' \
+            || { echo "::error::manifest.json is not at the archive root"; exit 1; }
+
+      - name: Tag the version
+        if: steps.check.outputs.new == 'true'
+        run: |
+          TAG="${{ steps.info.outputs.tag }}"
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "${{ steps.info.outputs.mod_id }} ${{ steps.info.outputs.version }}"
+          git push origin "$TAG"
+
+      - name: Publish the release
+        if: steps.check.outputs.new == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ steps.info.outputs.tag }}"
+          ASSET="${{ steps.build.outputs.asset }}"
+          VERSION="${{ steps.info.outputs.version }}"
+
+          # Release notes = this version's CHANGELOG section, plus install
+          # steps and the checksum so anyone can verify the download.
+          awk -v v="## $VERSION" '
+            $0 == v {found=1; next}
+            found && /^## / {exit}
+            found {print}
+          ' CHANGELOG.md > notes.md
+
+          {
+            echo ""
+            echo "---"
+            echo ""
+            echo "**Install:** download \`$ASSET\`, then in the launcher choose"
+            echo "**MODS → Import mod .zip**. Fully quit and relaunch afterwards."
+            echo ""
+            echo "\`SHA-256: ${{ steps.build.outputs.sha256 }}\`"
+          } >> notes.md
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists - uploading asset only."
+            gh release upload "$TAG" "$ASSET" --clobber
+          else
+            gh release create "$TAG" "$ASSET" \
+              --title "$TAG" \
+              --notes-file notes.md
+          fi

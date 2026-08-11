@@ -15,3 +15,12 @@
   Inc. / GAME FREAK inc. This mod contains no ROM data or copyrighted
   assets; it is a fan-made script mod and requires the user's own game
   copy via gen1recomp.
+- **Licence scope.** The MIT licence in `LICENSE` covers this mod's own
+  code. It makes no claim over ROM-derived material or Nintendo
+  trademarks, and grants no rights in either.
+- **Ball tile artwork is never redistributed.** The black band (0.1.15+)
+  needs the ball sprite's colour indices rearranged. Rather than ship an
+  edited copy of that artwork — which is ROM-derived — the mod rebuilds it
+  in memory each session from the sheet your own game extracted from your
+  own cartridge dump. What this repo contains is a table of which pixels
+  play which role, not the pixels themselves.

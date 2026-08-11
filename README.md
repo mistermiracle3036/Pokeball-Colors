@@ -172,9 +172,13 @@ ribbon for Pokemon caught in a particular ball, say:
 if mon.caughtBall == "GS_BALL" then ... end
 ```
 
-It's declared in `exports.owns.caughtBallField`. This mod owns writing
-it; don't write it from elsewhere. It's `nil` on Pokemon caught before
-v0.1.12 or while this mod wasn't installed, so always nil-check.
+It's declared in `exports.owns.caughtBallField`. Read it freely; don't
+write it **while this mod is installed**. If you need the field to exist
+without this mod, write it only when `exports.owns.caughtBallField` is
+absent, and never overwrite a value that is already set — that way the
+two of you can never disagree about which ball caught a Pokemon. It's
+`nil` on Pokemon caught before v0.1.12 or while this mod wasn't
+installed, so always nil-check.
 
 Register on `game.ready` and **only when your key is absent**, so a user's
 own override always wins:
@@ -199,5 +203,21 @@ Built for [gen1recomp](https://github.com/bryanthaboi/gen1recomp).
 Colors for the nine balls from
 [Custom Poké Balls](https://github.com/magalvao/custom-pokeballs) by
 magalvao were matched by eye to that mod's own sprite art; no assets are
-used or redistributed.
+used or redistributed. The mart-stocking approach behind the DEV option
+follows the shelf mechanism magalvao's mod established and Snag Quest
+refined — no code was copied from either.
+
+The black band rearranges the colour indices of the ball sprite. That
+artwork is ROM-derived, so this mod ships none of it: the rearranged sheet
+is rebuilt in memory each session from the one your own game extracted
+from your own cartridge.
+
+Licensed **MIT** — see [LICENSE](LICENSE). That covers this mod's own
+code, and makes no claim over ROM-derived material or Nintendo
+trademarks.
+
+Pokémon and all related names are trademarks of Nintendo / Creatures Inc.
+/ GAME FREAK inc. This is an unofficial fan project, not affiliated with
+or endorsed by any of them, and it requires your own copy of the game.
+
 See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
