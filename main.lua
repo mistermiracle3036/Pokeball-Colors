@@ -60,7 +60,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.19"
+  local VERSION = "0.1.20"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -74,6 +74,8 @@ return function(mod)
       label = "Black band on thrown balls", default = true },
     { key = "dev_all_balls_in_marts", type = "toggle",
       label = "DEV: every ball sold in marts", default = false },
+    { key = "dev_gold_probe", type = "toggle",
+      label = "DEV: GOLD ball palette probe", default = false },
   })
 
   local PaletteFX = require("src.render.PaletteFX")
@@ -633,6 +635,13 @@ return function(mod)
     return pal
   end
 
+  -- Capability gate, not a version check: on a Gen 2 boot this require
+  -- resolves to the adapter facade, where drawWorld has no backing and
+  -- reads nil (gen2check MK404).  Installing over it would write a wrapper
+  -- nothing calls and stash a nil "original", so skip it entirely and
+  -- leave the Center alone there.  Gold's heal machine is a different
+  -- screen and would need its own seam anyway.
+  if type(OverworldState.drawWorld) == "function" then
   OverworldState._pbcOriginals = OverworldState._pbcOriginals
     or { drawWorld = OverworldState.drawWorld }
   local vanillaDrawWorld = OverworldState._pbcOriginals.drawWorld
@@ -675,6 +684,89 @@ return function(mod)
     lg.draw = vanillaDraw
     if not ok then error(err) end
   end
+  end -- drawWorld capability gate
+
+  -- ------------------------------------------------------------------
+  -- GOLD SPIKE (default OFF, and inert on Gen 1).
+  --
+  -- Everything above is Gen 1 machinery and stays that way: Gold colours a
+  -- thrown ball itself, from the ROM's own ball_colors.asm, through
+  -- BattleState:ballPalette -> env.ballPalette -> the throw animation.  The
+  -- ONLY gap there is that the table covers the native and Kurt balls, and
+  -- anything else -- every ball any mod adds -- falls to the terminator
+  -- row's PAL_BATTLE_OB_GRAY.
+  --
+  -- Closing that gap needs two things, and this spike exists to prove both
+  -- before any of it is designed for real:
+  --
+  --   1. that a palette a MOD registers under its own name resolves at
+  --      throw time.  BattleAnimView:objPalette reads
+  --      data.gen2Palettes.battleObjects[name] with no allow-list
+  --      (src/ui/gen2/BattleAnimView.lua:104), so it should -- but "should"
+  --      is what this project's rules exist to stop me shipping.
+  --   2. the row shape a thrown ball actually needs.  Schemas.lua:729-731
+  --      says an OBJ row carries TWO colours (the cart supplies white and
+  --      black) while a BG row carries four.  Which one the ball wants is
+  --      not stated anywhere, so the spike registers both and puts them on
+  --      two different balls.
+  --
+  -- Deliberately self-contained: it recolours POKE_BALL and GREAT_BALL,
+  -- which Gold HAS.  Testing this against a mod-added ball would need that
+  -- ball's mod to declare Gen 2 too -- Kanto Balls does not, so on Gold its
+  -- balls do not exist at all and there would be nothing to colour.
+  --
+  -- Deliberately NOT the real feature: the real one maps each registered
+  -- body/accent onto a per-ball palette.  Prove the mechanism first.
+  -- ------------------------------------------------------------------
+  local PROBE_2 = "PBC_PROBE_TWO"
+  local PROBE_4 = "PBC_PROBE_FOUR"
+  local MAGENTA, GREEN = { 255, 0, 255 }, { 0, 255, 0 }
+
+  -- Which engine is running.  This is a real generation boundary -- Gold
+  -- has an entirely separate battle screen -- not a feature gate, so it is
+  -- tested by asking whether the Gen 2 palette table exists rather than by
+  -- naming a game.  game.ready is the first point data is populated.
+  mod.events:on("game.ready", function(p)
+    local game = p and p.game
+    local data = game and game.data
+    local pals = data and data.gen2Palettes
+    if not pals then return end                  -- Gen 1: nothing to do
+    if not mod.options:get("dev_gold_probe") then return end
+
+    local set = pals.battleObjects
+    if type(set) ~= "table" then
+      Runtime.reportError("pokeball_colors",
+        "G2: no battleObjects table -- cannot probe")
+      return
+    end
+    -- Written straight into the merged table rather than through
+    -- mod.content.palettes, because a registry op folds at load, long
+    -- before we can tell which generation booted.  The real feature would
+    -- register properly; a probe may not be tidy at the cost of being
+    -- conditional.
+    set[PROBE_2] = { MAGENTA, GREEN }
+    set[PROBE_4] = { MAGENTA, GREEN, MAGENTA, GREEN }
+
+    local okBS, BS2 = pcall(require, "src.ui.gen2.BattleState")
+    if not (okBS and type(BS2) == "table"
+            and type(BS2.ballPalette) == "function") then
+      Runtime.reportError("pokeball_colors",
+        "G2: ballPalette missing -- cannot probe")
+      return
+    end
+    BS2._pbcOriginals = BS2._pbcOriginals
+      or { ballPalette = BS2.ballPalette }
+    local vanillaBallPalette = BS2._pbcOriginals.ballPalette
+    BS2.ballPalette = function(self, itemId)
+      if mod.options:get("dev_gold_probe") then
+        if itemId == "POKE_BALL" then return PROBE_2 end
+        if itemId == "GREAT_BALL" then return PROBE_4 end
+      end
+      return vanillaBallPalette(self, itemId)
+    end
+    Runtime.reportError("pokeball_colors",
+      "G2 probe armed: POKE=2col GREAT=4col")
+  end)
 
   mod.log:info("pokeball_colors %s loaded", VERSION)
 end

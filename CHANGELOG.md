@@ -4,6 +4,28 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.20
+
+> **Test build — do not publish.** This version declares Gen 2 support in
+> order to load on Gold at all, and that declaration is a promise the mod
+> cannot keep yet. It is here to answer two questions on a real Gold boot.
+> If it turns out Gold needs something different, the declaration comes
+> back out.
+
+- **Gen 2 (Gold): experimental, under test.** Gold already colours thrown
+  balls itself, from the game's own data, so the Gen 1 feature has nothing
+  to port. The only real gap is that balls added by mods aren't in Gold's
+  table and all throw grey. This version does not fix that yet — it checks
+  whether the fix is possible.
+- New **"DEV: GOLD ball palette probe"** toggle (default OFF, and does
+  nothing at all on Red/Blue/Yellow). On Gold it recolours the POKé BALL
+  and GREAT BALL to garish magenta and green. If they come out that way,
+  the technique works.
+- The POKéMON CENTER ball colouring is now skipped on Gold rather than
+  installed over a seam that isn't there. Gold's Center is a different
+  screen and would need its own support.
+- **Nothing changes on Red, Blue or Yellow in this version.**
+
 ## 0.1.19
 
 **Updating from 0.1.13?** Here is everything new since then.
