@@ -60,7 +60,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.18"
+  local VERSION = "0.1.19"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -74,8 +74,6 @@ return function(mod)
       label = "Black band on thrown balls", default = true },
     { key = "dev_all_balls_in_marts", type = "toggle",
       label = "DEV: every ball sold in marts", default = false },
-    { key = "dev_band_probe", type = "toggle",
-      label = "DEV: report ball render to [ERRS]", default = false },
   })
 
   local PaletteFX = require("src.render.PaletteFX")
@@ -414,52 +412,17 @@ return function(mod)
     return c and c.line or nil
   end
 
-  -- ------------------------------------------------------------------
-  -- DEV probe (default OFF).  0.1.17 testing reported that with the band
-  -- ON, balls that have NO `line` -- ULTRA and Kanto Balls' NEST -- render
-  -- with their two colors swapped during the toss and correct again during
-  -- the shake, and that turning the band off fixes it.
-  --
-  -- Half of that is explained and is NOT this mod: the ULTRA BALL's toss
-  -- has always flickered.  BattleState:ballFlicker returns `false` for a
-  -- ball with no flicker, and the caller writes
+  -- The ULTRA BALL looks like it turns upside down during the toss and
+  -- settles at the wobbles.  That is not this feature and not a bug: the
+  -- Master/Ultra toss flickers on hardware.  BattleState:ballFlicker
+  -- returns `false` for a ball without flicker and its caller writes
   -- `item.ball and self:ballFlicker(item.ball) or nil`, which collapses
-  -- false to nil -- so AnimPlayer falls through to its own hardcoded
+  -- false to nil, so AnimPlayer falls through to its own hardcoded
   -- `ball == MASTER_BALL or ULTRA_BALL` test (AnimPlayer.lua:447-455).
-  -- Those frames come back tagged "f0x" and this mod has swapped the pair
-  -- on f0x since 0.1.1, deliberately, to keep the strobe in the ball's
-  -- colors.  Under ULTRA's near-black accent that reads as the ball
-  -- turning upside down, and it stops at the shake because SHAKE_ANIM
-  -- never flickers.  Pre-existing, and unrelated to the band.
-  --
-  -- The NEST BALL half is NOT explained.  NEST has no `flicker` and no
-  -- `line` (read from Kanto Balls 0.3.5), so it should never see "f0x"
-  -- and should take byte-identical paths with the band on or off -- both
-  -- gates below return nil for it either way.  Rather than guess at a fix
-  -- for a mechanism that shouldn't exist, this reports what actually
-  -- resolved, once per distinct combination, to the [ERRS] screen.
-  --
-  -- Reading a row -- `NEST_BALL f0 line=N sheet=N`:
-  --   the ball id the mod resolved for those frames; the hardware OBJ
-  --   palette tag the engine put on them ("f0x" = the flicker, so the two
-  --   colors are swapped ON PURPOSE); whether that ball has a `line`; and
-  --   whether the re-indexed sheet was actually used.
-  -- A NEST_BALL row reading `f0x` means the flicker is reaching a ball
-  -- that should not have it, and the bug is upstream of the band. A row
-  -- reading `f0 line=N sheet=Y` means the sheet leaked to a ball with no
-  -- band, and the bug is in ballOf() below.
-  -- ------------------------------------------------------------------
-  local probed = {}
-  local function probe(ball, obp, hasLine, usedSheet)
-    if not mod.options:get("dev_band_probe") then return end
-    local key = tostring(ball) .. "/" .. tostring(obp)
-      .. "/" .. tostring(hasLine) .. "/" .. tostring(usedSheet)
-    if probed[key] then return end
-    probed[key] = true
-    Runtime.reportError("pokeball_colors", string.format(
-      "%s %s line=%s sheet=%s", tostring(ball), tostring(obp),
-      hasLine and "Y" or "N", usedSheet and "Y" or "N"))
-  end
+  -- Those frames arrive tagged "f0x" and the wrap below swaps the pair on
+  -- f0x deliberately, to keep the strobe in the ball's own colors; under
+  -- ULTRA's near-black accent that reads as inversion, and it stops at the
+  -- shake because SHAKE_ANIM never flickers.  Do not "fix" it.
 
   -- ------------------------------------------------------------------
   -- tilesheet substitution.  Only tileset 0, only while a ball anim is
@@ -477,12 +440,8 @@ return function(mod)
     if ts == 0 and self._pbcMove and BALL_MOVES[self._pbcMove]
        and bandColor(ballOf(self)) then
       local img = bandSheet(self)
-      if img then
-        self._pbcSheetUsed = true       -- probe only; read by the color wrap
-        return img
-      end
+      if img then return img end
     end
-    if ts == 0 then self._pbcSheetUsed = false end
     return vanillaSheetImage(self, ts)
   end
 
@@ -535,7 +494,6 @@ return function(mod)
     -- dark shade, so a band that held still through the Master/Ultra
     -- flash is what the hardware does.
     local line = bandColor(ball)
-    probe(ball, s.obp, line ~= nil, ap and ap._pbcSheetUsed)
     return { accent, body, line and norm(line) or body }
   end
 
