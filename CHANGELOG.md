@@ -4,6 +4,26 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.15
+- **Thrown balls can have a black band.** The four native balls whose art
+  has one -- POKe, GREAT, MASTER and SAFARI -- now throw with a black band
+  along the seam between the two halves, through the toss, the wobbles and
+  the resting caught ball. New toggle "Black band on thrown balls"
+  (default ON) turns it off again.
+- ULTRA BALL is left two-tone on purpose: its dark half is already nearly
+  black, so a band there would read as nothing.
+- Mod authors: a color entry takes an optional third key,
+  `line = {r,g,b}`, alongside `body` and `accent`. Leave it out and the
+  ball renders exactly as it does today. Balls from Custom Poke Balls,
+  Kanto Balls and Snag Quest are unchanged in this version -- their own
+  mods decide whether to opt in.
+- The band does not flash during the MASTER/ULTRA toss flicker. That
+  matches the hardware, whose flicker only ever swapped the other two
+  shades.
+- The POKeMON CENTER machine is untouched in this version; whether its
+  balls should pick up the band is a separate question that needs a
+  screenshot first.
+
 ## 0.1.14
 - `registerColors` now states in code that a color entry is **opaque past
   the keys it validates**: unknown keys are stored untouched instead of

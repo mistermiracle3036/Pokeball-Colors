@@ -11,11 +11,38 @@
 --     playing animation and the resting lockedBall).  We wrap it.
 --   * Ball toss tiles run under rOBP0: s.obp == "f0", or "f0x" while
 --     DoBallTossSpecialEffects has the palette complemented (the
---     Master/Ultra flicker).  Under the f0 shade map ({0,3,3}) the
---     sprite has exactly two effective slots: DMG color 1 -> lightest
---     shade (ball body), colors 2/3 -> darkest (outline/band).  So a
---     ball color is a { light, dark } pair; on "f0x" blocks we swap the
---     pair, which keeps the flicker in the ball's own colors.
+--     Master/Ultra flicker).  Vanilla's f0 shade map ({0,3,3}) collapses
+--     DMG colors 2 and 3 onto one shade, so on hardware the ball is
+--     two-tone; the wrap REPLACES the whole return, so it is not bound by
+--     that map and can hand back three distinct colors (see the third
+--     color note below).  On "f0x" blocks we swap the light/dark pair,
+--     which keeps the flicker in the ball's own colors.
+--
+-- The third color (0.1.15).  Verified by reading the generated tilesheet
+-- pixels, not assumed: the ball tiles use ALL THREE opaque DMG indices --
+-- 1 = bottom crescent + center dot, 2 = upper body mass, 3 = perimeter
+-- outline ring.  So a third region has always been there; what the
+-- developer actually wants coloured (a band along the crescent seam, as
+-- on a real Poke Ball) is NOT that region -- those pixels are index 2,
+-- indistinguishable from the body.
+--
+-- So an optional `line` color comes with re-indexed art: a copy of the
+-- generated sheet in which, for the six ball tiles only, the seam pixels
+-- become index 3 and the outline ring becomes index 2.  Rendered with
+-- { accent, body, line } that is exactly the band; rendered with
+-- { accent, body, body } it is pixel-identical to vanilla, which is why
+-- balls with no `line` never touch it.  The copy is REBUILT AT RUNTIME
+-- from the player's own extracted sheet -- no ROM-derived art is shipped
+-- in this repo (see BAND_TILES).
+--
+-- The substitution is deliberately made at AnimPlayer:sheetImage rather
+-- than by patching the battle_anims registry.  A `tilesheet:0` patch
+-- would be global -- every mode, and every other animation drawing from
+-- tileset 0 (BLOCKBALL_ANIM, SOFTBOILED and the spiral-balls emitters all
+-- reuse these exact tiles) -- and would collide with any other mod
+-- patching that record.  The wrap instead swaps the image for the frames
+-- of a ball toss/shake by a ball that has a `line`, under ADVANCED, with
+-- the option on: nothing else in the game ever sees the re-indexed sheet.
 --   * Which ball is in flight: toss rows carry opts.ball into
 --     AnimPlayer:start (BattleState.lua ~1188), and
 --     BattleState:ballChain(tossAnim, caught, shakes, ball) sees the
@@ -33,7 +60,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.14"
+  local VERSION = "0.1.15"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -43,6 +70,8 @@ return function(mod)
       label = "Rocket-colored SNAG BALL", default = true },
     { key = "center_balls", type = "toggle",
       label = "Colored balls at POKeMON CENTER", default = true },
+    { key = "ball_band", type = "toggle",
+      label = "Black band on thrown balls", default = true },
   })
 
   local PaletteFX = require("src.render.PaletteFX")
@@ -57,13 +86,31 @@ return function(mod)
   -- slot 1.  Native colors follow the series art; the nine
   -- custom_pokeballs colors were sampled from that mod's own
   -- assets/balls/*.png.
+  -- `line` (optional, 0.1.15) is the third color: the band along the seam
+  -- between the two halves.  Absent = the ball renders exactly as it did
+  -- before 0.1.15, vanilla art and all.  Given to the four native balls
+  -- whose series art has a visible black band AND whose own two colors
+  -- leave room for it to read.
+  --
+  -- ULTRA_BALL is deliberately left without one: its accent is already
+  -- { 40, 40, 40 }, so a black band would sit against a near-black
+  -- crescent and read as nothing.  The nine custom_pokeballs entries are
+  -- likewise left alone -- those colors were sampled from that mod's own
+  -- art and this mod has no basis to invent a band for someone else's
+  -- ball.  Their author (and Kanto Balls, for GS/PREMIER) can opt in
+  -- through registerColors at any time.
+  local BLACK = { 0, 0, 0 }
   local COLORS = {
     -- native
-    POKE_BALL   = { body = { 224,  72,  56 }, accent = { 248, 216, 208 } },
-    GREAT_BALL  = { body = {  56, 112, 216 }, accent = { 208, 224, 248 } },
+    POKE_BALL   = { body = { 224,  72,  56 }, accent = { 248, 216, 208 },
+                    line = BLACK },
+    GREAT_BALL  = { body = {  56, 112, 216 }, accent = { 208, 224, 248 },
+                    line = BLACK },
     ULTRA_BALL  = { body = { 232, 192,  40 }, accent = {  40,  40,  40 } },
-    MASTER_BALL = { body = { 152,  72, 200 }, accent = { 232, 200, 248 } },
-    SAFARI_BALL = { body = { 112, 160,  72 }, accent = { 224, 232, 200 } },
+    MASTER_BALL = { body = { 152,  72, 200 }, accent = { 232, 200, 248 },
+                    line = BLACK },
+    SAFARI_BALL = { body = { 112, 160,  72 }, accent = { 224, 232, 200 },
+                    line = BLACK },
     -- custom_pokeballs (harmless entries if that mod is absent)
     QUICK_BALL  = { body = { 232, 216,  56 }, accent = {  40,  88, 168 } },
     TIMER_BALL  = { body = { 232, 232, 232 }, accent = { 192,  56,  48 } },
@@ -92,8 +139,15 @@ return function(mod)
   --
   --   local pbc = mod.find("pokeball_colors")
   --   if pbc then pbc.exports.registerColors({
-  --     MY_BALL = { body = {r,g,b}, accent = {r,g,b} },
+  --     MY_BALL = { body = {r,g,b}, accent = {r,g,b},
+  --                 line = {r,g,b} },   -- optional, 0.1.15+
   --   }) end
+  --
+  -- `line` is the band along the seam.  Omit it and the ball renders
+  -- two-tone on vanilla art exactly as it did before 0.1.15 -- which is
+  -- also what happens if the player turns the band option off, or if this
+  -- mod is an older copy that has never heard of the key.  So supplying
+  -- it is always safe and never a hard dependency.
   --
   -- Owns the only-if-absent rule so callers cannot get it wrong: a key
   -- already present (a user override, or another mod that got there
@@ -117,6 +171,14 @@ return function(mod)
         if type(v[i]) ~= "number" then return false end
       end
     end
+    -- optional keys: validated only when present, never required
+    local line = c.line
+    if line ~= nil then
+      if type(line) ~= "table" or #line < 3 then return false end
+      for i = 1, 3 do
+        if type(line[i]) ~= "number" then return false end
+      end
+    end
     return true
   end
 
@@ -129,7 +191,8 @@ return function(mod)
     for id, c in pairs(colors) do
       if type(id) ~= "string" or not validColor(c) then
         mod.log:warn("registerColors: bad entry for %s "
-          .. "(need { body = {r,g,b}, accent = {r,g,b} })", tostring(id))
+          .. "(need { body = {r,g,b}, accent = {r,g,b}, "
+          .. "line = {r,g,b} optional })", tostring(id))
         skipped = skipped + 1
       elseif COLORS[id] ~= nil then
         skipped = skipped + 1          -- already set: never clobber
@@ -204,9 +267,150 @@ return function(mod)
     animSpriteColors = BattleState.animSpriteColors,
   }
   local vanillaBallChain = BattleState._pbcOriginals.ballChain
+  -- the battle whose chain is running, for seams that only see the
+  -- AnimPlayer (sheetImage below has no route back to the BattleState)
+  local activeBattle
   BattleState.ballChain = function(self, tossAnim, caught, shakes, ball)
     self._pbcBall = ball
+    activeBattle = self
     return vanillaBallChain(self, tossAnim, caught, shakes, ball)
+  end
+
+  -- ------------------------------------------------------------------
+  -- The re-indexed ball tilesheet (see the third-color note at the top).
+  --
+  -- Built at runtime from the player's OWN extracted sheet rather than
+  -- shipped as a file: this art is ROM-derived, and the whole engine is
+  -- built so Nintendo's graphics come out of the player's cartridge dump
+  -- and are never redistributed.  A mod has no business being the one
+  -- exception.  What ships here is only the pixel-role table below --
+  -- which pixels of six 8x8 tiles play which part -- and the image is
+  -- reproduced from the player's file every session.
+  --
+  -- BAND_TILES: tile id -> the pixels whose DMG color index changes, in
+  -- tile-local coordinates.  `body` are the perimeter outline pixels
+  -- (index 3 -> 2, so they join the body); `line` are the seam pixels
+  -- (index 2 -> 3, so they become the band).  Everything else is copied
+  -- untouched, so with a { accent, body, body } palette the result is
+  -- pixel-identical to vanilla.
+  --
+  -- Tiles 2/18 are the upright ball (TOSS/GREATTOSS/ULTRATOSS, mirrored
+  -- for the right half, which is why their band data is symmetric) and
+  -- 6/7/22/23 the tilted one (SHAKE).  Derived from the 0.1.75 extraction
+  -- of Red and Yellow, whose move_anim_0.png are byte-identical.
+  -- ------------------------------------------------------------------
+  local BAND_TILES = {
+    [2]  = { body = { {6,4}, {7,4}, {4,5}, {5,5}, {3,6}, {3,7} },
+             line = {} },
+    [6]  = { body = { {5,4}, {6,4}, {7,4}, {3,5}, {4,5}, {2,6}, {2,7} },
+             line = {} },
+    [7]  = { body = { {0,4}, {1,5}, {2,5}, {3,6}, {3,7} },
+             line = {} },
+    [18] = { body = { {2,0}, {2,1}, {2,2}, {2,3}, {3,4}, {3,5}, {4,6},
+                      {5,6}, {6,7}, {7,7} },
+             line = { {3,1}, {4,1}, {5,1}, {5,2}, {6,2}, {7,2} } },
+    [22] = { body = { {1,0}, {1,1}, {1,2}, {1,3}, {2,4}, {2,5}, {3,6},
+                      {4,6}, {5,7}, {6,7}, {7,7} },
+             line = { {6,2}, {7,2}, {2,3}, {3,3}, {4,3}, {5,3}, {6,3} } },
+    [23] = { body = { {4,0}, {4,1}, {4,2}, {4,3}, {3,4}, {3,5}, {1,6},
+                      {2,6}, {0,7} },
+             line = { {2,0}, {3,0}, {1,1}, {2,1}, {0,2}, {1,2} } },
+  }
+
+  -- the generated sheets are GB grays: index 1 = 170, 2 = 85, 3 = 0
+  -- (tools/extract/gfx.py GB_SHADES).  LOVE 11 takes 0-1 floats.
+  local SHADE_BODY, SHADE_LINE = 85 / 255, 0
+
+  -- Built once, lazily: a graphics context exists at draw time but not
+  -- necessarily at load, and a headless run must not fault here.  Any
+  -- failure warns once and falls back to the vanilla sheet, which renders
+  -- the ball two-tone -- never a crash, never a missing sprite.
+  local bandImage           -- love Image, or false once a build has failed
+  local function bandSheet(ap)
+    if bandImage ~= nil then return bandImage or nil end
+    bandImage = false                       -- never retry per frame
+    local sheet = ap and ap.data and ap.data.tilesheets
+                  and ap.data.tilesheets[0]
+    if not (sheet and sheet.path and love and love.image
+            and love.image.newImageData and love.graphics
+            and love.graphics.newImage) then
+      mod.log:warn("banded balls unavailable (no tilesheet 0 or no "
+        .. "graphics) -- balls throw two-tone")
+      return nil
+    end
+    local ok, img = pcall(function()
+      local id = love.image.newImageData(sheet.path)
+      local cols = math.floor(id:getWidth() / 8)
+      local function paint(list, v)
+        for i = 1, #list do
+          local p = list[i]
+          id:setPixel(p[1], p[2], v, v, v, 1)
+        end
+      end
+      for tile, spec in pairs(BAND_TILES) do
+        local tx, ty = (tile % cols) * 8, math.floor(tile / cols) * 8
+        local function at(list) local out = {}
+          for i = 1, #list do out[i] = { tx + list[i][1], ty + list[i][2] } end
+          return out
+        end
+        paint(at(spec.body), SHADE_BODY)
+        paint(at(spec.line), SHADE_LINE)
+      end
+      return love.graphics.newImage(id)
+    end)
+    if not (ok and img) then
+      mod.log:warn("could not build the banded ball sheet from %s (%s) "
+        .. "-- balls throw two-tone", tostring(sheet.path), tostring(img))
+      return nil
+    end
+    bandImage = img
+    return img
+  end
+
+  -- The ball a given AnimPlayer is drawing right now.  Toss rows carry
+  -- opts.ball; SHAKE_ANIM rows and the resting lockedBall do not, so the
+  -- chain's ball covers those.
+  local function ballOf(ap)
+    if not ap then return nil end
+    return ap._pbcBall
+      or (ap._pbcMove and BALL_MOVES[ap._pbcMove]
+          and activeBattle and activeBattle._pbcBall)
+      or nil
+  end
+
+  -- Does this ball render with a band right now?  Every gate the color
+  -- wrap applies, so the art and the palette can never disagree.
+  local function bandColor(ball)
+    if not ball then return nil end
+    if PaletteFX.mode ~= "redpp" then return nil end
+    if not mod.options:get("enabled") then return nil end
+    if not mod.options:get("ball_band") then return nil end
+    if ball == "SNAG_BALL" and not mod.options:get("snag_ball_color") then
+      return nil
+    end
+    local c = COLORS[ball]
+    return c and c.line or nil
+  end
+
+  -- ------------------------------------------------------------------
+  -- tilesheet substitution.  Only tileset 0, only while a ball anim is
+  -- playing, only for a ball that has a `line`: every other animation
+  -- drawing from this sheet (BLOCKBALL_ANIM, SOFTBOILED, the spiral-ball
+  -- emitters) and every other color mode keeps the vanilla art.
+  --
+  -- Deliberately does NOT write self.images -- that is the AnimPlayer's
+  -- own cache of the vanilla sheets and must not be poisoned with ours.
+  -- ------------------------------------------------------------------
+  AnimPlayer._pbcOriginals.sheetImage = AnimPlayer._pbcOriginals.sheetImage
+    or AnimPlayer.sheetImage
+  local vanillaSheetImage = AnimPlayer._pbcOriginals.sheetImage
+  AnimPlayer.sheetImage = function(self, ts)
+    if ts == 0 and self._pbcMove and BALL_MOVES[self._pbcMove]
+       and bandColor(ballOf(self)) then
+      local img = bandSheet(self)
+      if img then return img end
+    end
+    return vanillaSheetImage(self, ts)
   end
 
   -- ------------------------------------------------------------------
@@ -248,9 +452,17 @@ return function(mod)
       -- keep the flicker, in the ball's own colors
       accent, body = body, accent
     end
-    -- f0 shade map slots: DMG color 1 -> slot 1, colors 2/3 -> slots 2/3.
-    -- The body region is colors 2/3 (confirmed 0.1.0), so it goes last.
-    return { accent, body, body }
+    -- Slots are DMG color indices 1/2/3.  Slot 3 is the outline ring on
+    -- vanilla art and the seam band on the re-indexed sheet; either way
+    -- painting it `body` is the pre-0.1.15 two-tone ball, which is the
+    -- fallback whenever this ball has no `line` or the band is off.
+    --
+    -- The band does NOT take part in the flicker: vanilla's f0x map is
+    -- { 3, 0, 3 }, which swaps indices 1 and 2 and leaves index 3 on the
+    -- dark shade, so a band that held still through the Master/Ultra
+    -- flash is what the hardware does.
+    local line = bandColor(ball)
+    return { accent, body, line and norm(line) or body }
   end
 
   -- Log who owns what, so "which mod colored this ball" is answerable
@@ -313,6 +525,15 @@ return function(mod)
   local HEAL_FLASH_MAP = { [0] = 0, [1] = 2, [2] = 1, [3] = 3 }
 
   local function ballPalette(c, flashed)
+    -- TODO/CONFIRM: `line` is deliberately NOT used here yet.  The obvious
+    -- move is to feed it into this darkest slot so the machine and the
+    -- toss agree, but the machine draws a DIFFERENT sprite (the heal
+    -- machine sheet's ball quad, not the anim tilesheet), and this path's
+    -- whole shade-slot mapping is still unconfirmed on device -- so what
+    -- shade 3 actually covers there is a guess, and a band and an outline
+    -- are not the same region.  Confirm the mapping from a screenshot
+    -- first, then decide.  Until then the machine keeps the darkened body
+    -- it has always used and nothing about it changes in 0.1.15.
     local dark = { math.floor(c.body[1] * 0.35),
                    math.floor(c.body[2] * 0.35),
                    math.floor(c.body[3] * 0.35) }

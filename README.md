@@ -34,11 +34,11 @@ changed by this mod.
 
 | Ball | Look |
 | ---- | ---- |
-| Poké Ball | Red with a pale highlight |
-| Great Ball | Blue with a pale highlight |
-| Ultra Ball | Gold with a black band |
-| Master Ball | Purple with a pale highlight |
-| Safari Ball | Olive green |
+| Poké Ball | Red with a pale highlight, black band |
+| Great Ball | Blue with a pale highlight, black band |
+| Ultra Ball | Gold with a black lower half |
+| Master Ball | Purple with a pale highlight, black band |
+| Safari Ball | Olive green with a black band |
 | Quick Ball *(Custom Poké Balls)* | Yellow with deep blue |
 | Timer Ball *(Custom Poké Balls)* | White with red |
 | Net Ball *(Custom Poké Balls)* | Teal |
@@ -52,6 +52,11 @@ changed by this mod.
 
 Balls from mods this one doesn't know about keep their vanilla colors.
 
+The black band is new in 0.1.15 and applies to the four native balls whose
+art has one. Balls from other mods don't get one until their own mod asks
+for it — see [For mod authors](#for-mod-authors). Turn the band off in the
+options if you prefer the older two-tone look.
+
 The Master and Ultra Balls keep their signature palette strobe, now in
 their own colors. Poof clouds and every other battle animation are left
 exactly as vanilla.
@@ -64,8 +69,10 @@ Open **MODS → POKEBALL COLORS → OPTIONS** (F10 mod manager):
 | ------ | ------- | ------ |
 | COLORED BALLS (ADVANCED MODE) | ON | Master switch for all ball coloring |
 | ROCKET-COLORED SNAG BALL | ON | Snag Ball throws in black/red instead of its normal colors |
+| COLORED BALLS AT POKeMON CENTER | ON | The heal machine's balls use each mon's caught ball |
+| BLACK BAND ON THROWN BALLS | ON | The black band along a thrown ball's seam |
 
-Both toggles are live — they take effect on your next throw, no restart
+Every toggle is live — they take effect on your next throw, no restart
 needed.
 
 ## Installation
@@ -111,6 +118,7 @@ mod.events:on("game.ready", function()
       MY_BALL = {
         body   = { 200, 60, 40 },    -- the ball's main color
         accent = { 240, 224, 200 },  -- the smaller highlight
+        line   = { 0, 0, 0 },        -- optional: the band (0.1.15+)
       },
     })
   end
@@ -132,6 +140,18 @@ silently rendering vanilla.
 `body` fills the larger region of the ball sprite and `accent` the
 smaller one. If the ball's record has `flicker = true`, the two swap
 back and forth during the throw.
+
+`line` is optional and paints the band along the seam between the two
+halves, in battle only. Leave it out and your ball renders exactly as it
+did before 0.1.15 — and it degrades on its own besides, so supplying it
+is always safe: the band disappears if the player turns the "Black band
+on thrown balls" option off, and an older copy of this mod that has never
+heard of the key ignores it rather than rejecting your registration.
+Never a hard dependency, and never a reason to bump a version floor.
+
+A band needs somewhere to read: if your ball's `accent` is already dark,
+a black `line` will merge into it and show nothing. That is why the
+native ULTRA BALL has no band.
 
 ### Reading which ball caught a Pokemon
 
