@@ -4,6 +4,17 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.17
+- New option **"DEV: every ball sold in marts"** (default OFF). Turn it on
+  and every mart stocks every ball in the game, including balls added by
+  other mods, so you can buy a MASTER BALL (or anything else that's hard
+  to come by) and actually see what it looks like thrown.
+- It's reversible: turning it back off restores the normal shelves with
+  nothing left behind. Balls you already bought stay in your bag, like any
+  other purchase.
+- The MASTER BALL's price in the ROM is 0, so it rings up free. That's
+  vanilla data, not a discount this mod applies.
+
 ## 0.1.16
 - If the banded ball art can't be rebuilt on your device, the mod now
   says so on the mod manager's **[ERRS]** screen instead of only in a log

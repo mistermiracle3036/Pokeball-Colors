@@ -71,9 +71,18 @@ Open **MODS → POKEBALL COLORS → OPTIONS** (F10 mod manager):
 | ROCKET-COLORED SNAG BALL | ON | Snag Ball throws in black/red instead of its normal colors |
 | COLORED BALLS AT POKeMON CENTER | ON | The heal machine's balls use each mon's caught ball |
 | BLACK BAND ON THROWN BALLS | ON | The black band along a thrown ball's seam |
+| DEV: EVERY BALL SOLD IN MARTS | OFF | Every mart stocks every ball in the game |
 
 Every toggle is live — they take effect on your next throw, no restart
 needed.
+
+**DEV: EVERY BALL SOLD IN MARTS** is a testing aid, not a feature: it
+exists so you can buy a Master Ball and see what it looks like thrown
+without hunting one down. It stocks every ball the game knows about,
+including balls from other mods. Turning it back off restores the normal
+shelves completely — nothing is written to your save, and balls you
+already bought stay in your bag like any other purchase. (The Master
+Ball's price in the ROM is 0, so it rings up free. That's vanilla data.)
 
 ## Installation
 

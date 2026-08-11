@@ -60,7 +60,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.16"
+  local VERSION = "0.1.17"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -72,6 +72,8 @@ return function(mod)
       label = "Colored balls at POKeMON CENTER", default = true },
     { key = "ball_band", type = "toggle",
       label = "Black band on thrown balls", default = true },
+    { key = "dev_all_balls_in_marts", type = "toggle",
+      label = "DEV: every ball sold in marts", default = false },
   })
 
   local PaletteFX = require("src.render.PaletteFX")
@@ -475,6 +477,65 @@ return function(mod)
     -- flash is what the hardware does.
     local line = bandColor(ball)
     return { accent, body, line and norm(line) or body }
+  end
+
+  -- ------------------------------------------------------------------
+  -- DEV: every ball sold in marts (default OFF).
+  --
+  -- Testing what this mod does means throwing every ball, and some are
+  -- hard to come by in a normal save -- the MASTER BALL most of all.  With
+  -- the toggle on, every mart stocks every ball the game knows about,
+  -- including balls added by other mods, so one shop trip covers the whole
+  -- test matrix.
+  --
+  -- A cosmetics mod selling items is a real intrusion on a save, which is
+  -- why it is off by default, prefixed DEV: in the menu, and reversible:
+  -- the entry is COPIED before the append, so the underlying data table is
+  -- never mutated and turning the toggle back off restores the vanilla
+  -- shelf with nothing left behind.  Balls already bought stay in the bag,
+  -- as any bought item would.
+  --
+  -- Mechanism (the pattern snag_quest proved, and for the same reason):
+  -- mart stock is static data, so `text_pointers:patch(... { mart = {
+  -- __append = ids } })` cannot be conditioned on an option.  Wrapping
+  -- Data:textEntry -- the single lookup both mart-opening paths call
+  -- (OverworldController.lua ~2670, Commands.open_mart ~854) -- can be.
+  --
+  -- ItemEffects.BALLS is the authoritative ball set, not `def.ball`: the
+  -- ROM-extracted item records carry no `ball` field, so the five natives
+  -- would be missed.  Mods register into BALLS to make their ball throwable
+  -- at all, so this picks them up for free.
+  -- ------------------------------------------------------------------
+  local Data = require("src.core.Data")
+  local ItemEffects = require("src.inventory.ItemEffects")
+
+  Data._pbcOriginals = Data._pbcOriginals or { textEntry = Data.textEntry }
+  local vanillaTextEntry = Data._pbcOriginals.textEntry
+  Data.textEntry = function(self, mapLabel, textConst)
+    local entry = vanillaTextEntry(self, mapLabel, textConst)
+    if not (entry and entry.mart) then return entry end
+    if not mod.options:get("dev_all_balls_in_marts") then return entry end
+
+    local stock, have = {}, {}
+    for i, id in ipairs(entry.mart) do
+      stock[i] = id
+      have[id] = true
+    end
+    -- sorted, so the shelf is in the same order every time it opens
+    -- rather than in pairs() order, which is not stable across runs
+    local add = {}
+    for id in pairs(ItemEffects.BALLS or {}) do
+      if not have[id] and self.items and self.items[id] then
+        add[#add + 1] = id
+      end
+    end
+    table.sort(add)
+    for _, id in ipairs(add) do stock[#stock + 1] = id end
+
+    local copy = {}
+    for k, v in pairs(entry) do copy[k] = v end
+    copy.mart = stock
+    return copy
   end
 
   -- Log who owns what, so "which mod colored this ball" is answerable
