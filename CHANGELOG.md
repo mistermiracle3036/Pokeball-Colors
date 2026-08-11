@@ -4,6 +4,15 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.14
+- `registerColors` now states in code that a color entry is **opaque past
+  the keys it validates**: unknown keys are stored untouched instead of
+  rejected, so a mod written against a newer version of this mod still
+  registers cleanly against an older copy.
+- An RGB list is validated as **at least** three numbers rather than
+  exactly three. Only the first three are ever read; a longer list is the
+  caller's business. No behavior change for any existing registration.
+
 ## 0.1.13
 - New `exports.registerColors(colors)` for other ball mods: pass a table
   of `id -> { body, accent }` and this mod owns the only-if-absent rule,

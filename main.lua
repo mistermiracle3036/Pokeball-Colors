@@ -33,7 +33,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.13"
+  local VERSION = "0.1.14"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -101,11 +101,18 @@ return function(mod)
   -- read at draw time -- though game.ready is the conventional spot.
   -- Returns added, skipped.
   -- ------------------------------------------------------------------
+  -- A color entry is OPAQUE past the keys validated here.  Anything else
+  -- a caller puts on it (their own bookkeeping, a future key this mod
+  -- does not know yet) is stored untouched and never rejected, so a
+  -- newer caller keeps working against an older copy of this mod.  By
+  -- the same rule an RGB list is checked for AT LEAST three numbers, not
+  -- exactly three -- a fourth element (alpha, say) is the caller's
+  -- business and only the first three are ever read.
   local function validColor(c)
     if type(c) ~= "table" then return false end
     for _, k in ipairs({ "body", "accent" }) do
       local v = c[k]
-      if type(v) ~= "table" or #v ~= 3 then return false end
+      if type(v) ~= "table" or #v < 3 then return false end
       for i = 1, 3 do
         if type(v[i]) ~= "number" then return false end
       end
