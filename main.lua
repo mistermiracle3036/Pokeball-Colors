@@ -60,7 +60,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.15"
+  local VERSION = "0.1.16"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -325,6 +325,20 @@ return function(mod)
   -- necessarily at load, and a headless run must not fault here.  Any
   -- failure warns once and falls back to the vanilla sheet, which renders
   -- the ball two-tone -- never a crash, never a missing sprite.
+  --
+  -- Failures here report through Runtime.reportError, not just mod.log:
+  -- the developer tests on iOS where there is no console, and the whole
+  -- symptom of a failed rebuild is "the band just isn't there" -- which
+  -- is indistinguishable from the option being off or the ball having no
+  -- `line`.  The mod manager's [ERRS] screen is the only channel that
+  -- tells those apart on device.
+  local Runtime = require("src.mods.Runtime")
+  local function bandFail(fmt, ...)
+    local msg = string.format(fmt, ...)
+    mod.log:warn("%s", msg)
+    Runtime.reportError("pokeball_colors", msg)
+  end
+
   local bandImage           -- love Image, or false once a build has failed
   local function bandSheet(ap)
     if bandImage ~= nil then return bandImage or nil end
@@ -334,8 +348,7 @@ return function(mod)
     if not (sheet and sheet.path and love and love.image
             and love.image.newImageData and love.graphics
             and love.graphics.newImage) then
-      mod.log:warn("banded balls unavailable (no tilesheet 0 or no "
-        .. "graphics) -- balls throw two-tone")
+      bandFail("no band: tilesheet 0 or graphics unavailable")
       return nil
     end
     local ok, img = pcall(function()
@@ -359,8 +372,7 @@ return function(mod)
       return love.graphics.newImage(id)
     end)
     if not (ok and img) then
-      mod.log:warn("could not build the banded ball sheet from %s (%s) "
-        .. "-- balls throw two-tone", tostring(sheet.path), tostring(img))
+      bandFail("no band: sheet rebuild failed (%s)", tostring(img))
       return nil
     end
     bandImage = img

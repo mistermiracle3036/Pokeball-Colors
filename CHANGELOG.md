@@ -4,6 +4,12 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.16
+- If the banded ball art can't be rebuilt on your device, the mod now
+  says so on the mod manager's **[ERRS]** screen instead of only in a log
+  you can't see on a phone. Without it, that failure looked identical to
+  the option being off. Nothing else changed from 0.1.15.
+
 ## 0.1.15
 - **Thrown balls can have a black band.** The four native balls whose art
   has one -- POKe, GREAT, MASTER and SAFARI -- now throw with a black band
