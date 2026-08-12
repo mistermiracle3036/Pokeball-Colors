@@ -4,27 +4,43 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.21
+
+**Updating from 0.1.13?** Here is everything new since then.
+
+- **Thrown balls now have a black band** along the seam, the way a real
+  Poke Ball does -- through the toss, the wobbles and the resting ball
+  after a catch. The POKe, GREAT, MASTER and SAFARI balls have one. The
+  ULTRA BALL is left alone on purpose: its dark half would swallow a black
+  band whole. New toggle **"Black band on thrown balls"** (default ON)
+  puts everything back the way it was.
+- Balls from other mods keep their existing two-tone look until their own
+  mod opts in, so nothing you have installed changes appearance.
+- New **"DEV: every ball sold in marts"** toggle (default OFF) stocks every
+  mart with every ball in the game, so you can get hold of a MASTER BALL
+  and see what it looks like thrown. Turning it off restores the normal
+  shelves completely.
+- The mod now carries a **LICENSE** (MIT) and fuller credits.
+- Releases are built by a workflow instead of by hand, so the download has
+  the right shape and always includes the notices file.
+
+Known and **not** a bug: the ULTRA BALL appears to flip upside down during
+the throw and settle during the wobbles. That is the Master/Ultra palette
+strobe, which the original game does and this mod has always rendered in
+the ball's own colours.
+
+**New in 0.1.21 specifically**
+
+- **This mod is for Red, Blue and Yellow, and stays that way.** Pokemon
+  Gold colours thrown balls by itself, so there is nothing here it needs.
+  The experimental Gen 2 support tried in 0.1.20 has been removed rather
+  than shipped half-finished.
+- On the chance you run this alongside a Gold save: the mod simply does
+  not load there, which is the correct and quiet outcome.
+- No change to anything on Red, Blue or Yellow.
+
 ## 0.1.20
-
-> **Test build — do not publish.** This version declares Gen 2 support in
-> order to load on Gold at all, and that declaration is a promise the mod
-> cannot keep yet. It is here to answer two questions on a real Gold boot.
-> If it turns out Gold needs something different, the declaration comes
-> back out.
-
-- **Gen 2 (Gold): experimental, under test.** Gold already colours thrown
-  balls itself, from the game's own data, so the Gen 1 feature has nothing
-  to port. The only real gap is that balls added by mods aren't in Gold's
-  table and all throw grey. This version does not fix that yet — it checks
-  whether the fix is possible.
-- New **"DEV: GOLD ball palette probe"** toggle (default OFF, and does
-  nothing at all on Red/Blue/Yellow). On Gold it recolours the POKé BALL
-  and GREAT BALL to garish magenta and green. If they come out that way,
-  the technique works.
-- The POKéMON CENTER ball colouring is now skipped on Gold rather than
-  installed over a seam that isn't there. Gold's Center is a different
-  screen and would need its own support.
-- **Nothing changes on Red, Blue or Yellow in this version.**
+- Experimental Gen 2 probe, withdrawn again in 0.1.21. Never released.
 
 ## 0.1.19
 
