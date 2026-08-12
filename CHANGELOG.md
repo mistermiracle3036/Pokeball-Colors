@@ -4,6 +4,17 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.25
+- **Balls can now have a colour that is decided when you throw them**, not
+  fixed in advance -- for balls like Too Many Balls' KECLEON BALL that take
+  their colour from what is in front of them.
+- At the POKeMON CENTER such a ball shows **the colour it was caught
+  with**, on both Red and Gold. The colour is remembered on the Pokemon at
+  the moment of the catch, because a Center has nothing to camouflage
+  against.
+- Nothing changes for any ball that already had a fixed colour, and no
+  extra data is stored for one.
+
 ## 0.1.24
 - Notes only, no code or behaviour change. Verified against engine
   **v0.1.79**: nothing in that release affects this mod, and the Gold heal

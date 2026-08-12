@@ -185,6 +185,38 @@ A band needs somewhere to read: if your ball's `accent` is already dark,
 a black `line` will merge into it and show nothing. That is why the
 native ULTRA BALL has no band.
 
+### Balls whose colour is not fixed
+
+If a ball's colour depends on something — the target, the terrain, a roll
+at throw time — register a resolver instead of a static entry:
+
+```lua
+pbc.exports.registerColorResolver("MY_BALL", function(ctx)
+  -- ctx.ball, ctx.surface ("battle" | "catch"), and whatever the caller
+  -- has: ctx.battle, ctx.mon, ctx.game
+  return { body = {r,g,b}, accent = {r,g,b}, line = {r,g,b} }
+end)
+```
+
+Return `nil` to fall back to the ball's static colour, so a resolver that
+has nothing to say in a given situation costs nothing.
+
+**It is called once per throw**, not once per frame, and the answer is held
+for the whole toss, wobble and rest. That keeps the ball a stable colour
+and keeps a very hot draw path cheap — so a resolver may do real work, but
+it should not assume it runs every frame.
+
+At the Pokemon Center the ball shows **the colour it was caught with**: the
+resolved answer is snapshotted onto the Pokemon at catch time
+(`mon.caughtBallColor`, and `mon.caughtBallPalette` on Gold), because a
+Center has no battle to resolve against. This mod owns both fields.
+
+A resolver that errors is disabled for the session and reported on the
+[ERRS] screen, rather than being retried inside the draw loop.
+
+`exports.resolveColor(id, ctx)` is the read side, for any mod that needs a
+ball's current colour without caring whether it is static or dynamic.
+
 ### Reading which ball caught a Pokemon
 
 This mod records `mon.caughtBall` (the ball's item id) at catch time and

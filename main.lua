@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.24"
+  local VERSION = "0.1.25"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -86,6 +86,16 @@ return function(mod)
   local PaletteFX = require("src.render.PaletteFX")
   local BattleState = require("src.battle.BattleState")
   local AnimPlayer = require("src.battle.AnimPlayer")
+  local Runtime = require("src.mods.Runtime")
+
+  -- Forward declarations.  Lua compiles a name used before its `local` as a
+  -- GLOBAL, which is nil at runtime and fails silently -- the trap this
+  -- project has been bitten by before.  These are assigned further down but
+  -- read by the resolver machinery above their assignment, so they are
+  -- declared here on purpose.
+  local activeBattle      -- the BattleState whose ball chain is running
+  local gameRef           -- the live game, from game.ready
+  local goldPaletteName   -- Gold only: fn(ballId) -> PAL_BATTLE_OB_* name
 
   -- { body = the ball's main color, accent = its smaller highlight },
   -- 0-255 RGB.  CONFIRMED from a 0.1.0 capture: under the f0 shade map
@@ -147,7 +157,17 @@ return function(mod)
   --                       know the other's load order.  Absent on mons
   --                       caught before 0.1.12 or with this mod
   --                       uninstalled, so always nil-check it.
-  mod.exports.owns = { colors = true, caughtBallField = "mon.caughtBall" }
+  --   caughtBallColor / caughtBallPalette -- written only for balls whose
+  --     colour is dynamic, so the Center can show what a ball actually
+  --     looked like when it caught something.  Same rule as caughtBall:
+  --     read freely, do not write while this mod is installed.
+  mod.exports.owns = {
+    colors = true,
+    caughtBallField = "mon.caughtBall",
+    caughtBallColorField = "mon.caughtBallColor",
+    caughtBallPaletteField = "mon.caughtBallPalette",
+    colorResolvers = true,
+  }
 
   -- ------------------------------------------------------------------
   -- Public registration API for other ball mods.
@@ -222,6 +242,86 @@ return function(mod)
     return added, skipped
   end
 
+  -- ------------------------------------------------------------------
+  -- Dynamic colors (0.1.25), for a ball whose colour is not a constant --
+  -- Too Many Balls' KECLEON BALL is the first.
+  --
+  --   pbc.exports.registerColorResolver("KECLEON_BALL", function(ctx)
+  --     return { body = {r,g,b}, accent = {r,g,b}, line = {r,g,b} }
+  --   end)
+  --
+  -- ctx carries `ball`, `surface` ("battle" | "catch"), and whatever the
+  -- calling site has: `battle`, `mon`, `game`.  Return nil to fall back to
+  -- the static entry, so a resolver that has nothing to say in a given
+  -- situation costs nothing.
+  --
+  -- RESOLVED ONCE PER THROW, not per frame, and this is the part worth
+  -- knowing: the colour funnel is HOT.  animSpriteColors runs once per OAM
+  -- sprite plus up to three more for a tile straddling an attribute cell,
+  -- and bandColor is asked again from sheetImage for every sprite -- tens
+  -- of calls a frame, thousands a second.  A resolver is called once when
+  -- the chain starts and the answer is held for the whole toss/wobble/rest,
+  -- which is also what makes the ball a stable colour rather than a strobe.
+  -- (A per-frame `live` mode would be a real visual effect but needs the
+  -- resolver to be trivial; not built, and the cache is the only thing that
+  -- would have to change.)
+  --
+  -- A resolver that throws is disabled for the session and reported to
+  -- [ERRS] rather than being retried every frame inside a draw loop.
+  -- ------------------------------------------------------------------
+  local RESOLVERS = {}
+  local resolverDead = {}
+  local throwCache = {}
+
+  mod.exports.registerColorResolver = function(id, fn)
+    if type(id) ~= "string" or id == "" or type(fn) ~= "function" then
+      mod.log:warn("registerColorResolver: need (ballId, function)")
+      return false
+    end
+    if RESOLVERS[id] ~= nil then return false end   -- never clobber
+    RESOLVERS[id] = fn
+    mod.log:info("registerColorResolver: %s is now dynamic", id)
+    return true
+  end
+
+  -- The one place a ball's colour is decided.  Everything below reads
+  -- through this rather than indexing COLORS, so a resolver reaches every
+  -- surface at once.
+  local function resolveEntry(ball, ctx)
+    if not ball then return nil end
+    local fn = RESOLVERS[ball]
+    if fn and not resolverDead[ball] then
+      local hit = throwCache[ball]
+      if hit ~= nil then
+        if hit ~= false then return hit end
+      else
+        local ok, entry = pcall(fn, ctx or { ball = ball, surface = "battle" })
+        if not ok then
+          resolverDead[ball] = true
+          throwCache[ball] = false
+          mod.log:warn("color resolver for %s errored: %s", ball,
+            tostring(entry))
+          Runtime.reportError("pokeball_colors",
+            string.format("%s resolver failed", tostring(ball)))
+        elseif entry ~= nil and validColor(entry) then
+          throwCache[ball] = entry
+          return entry
+        else
+          if entry ~= nil then
+            mod.log:warn("color resolver for %s returned a bad entry; "
+              .. "using its static color", ball)
+          end
+          throwCache[ball] = false
+        end
+      end
+    end
+    return COLORS[ball]
+  end
+
+  -- Public, so a mod reading exports.colors directly does not silently miss
+  -- a resolver-backed ball.
+  mod.exports.resolveColor = function(id, ctx) return resolveEntry(id, ctx) end
+
   -- One warning per unknown ball id actually seen on screen, so a mod
   -- author whose ball renders in vanilla colors gets a reason instead of
   -- silence.  Seen-set, so this never spams per frame.
@@ -282,12 +382,11 @@ return function(mod)
     animSpriteColors = BattleState.animSpriteColors,
   }
   local vanillaBallChain = BattleState._pbcOriginals.ballChain
-  -- the battle whose chain is running, for seams that only see the
-  -- AnimPlayer (sheetImage below has no route back to the BattleState)
-  local activeBattle
+  -- (activeBattle is forward-declared at the top; see the note there)
   BattleState.ballChain = function(self, tossAnim, caught, shakes, ball)
     self._pbcBall = ball
     activeBattle = self
+    throwCache = {}          -- a new throw re-asks every resolver exactly once
     return vanillaBallChain(self, tossAnim, caught, shakes, ball)
   end
 
@@ -347,7 +446,6 @@ return function(mod)
   -- is indistinguishable from the option being off or the ball having no
   -- `line`.  The mod manager's [ERRS] screen is the only channel that
   -- tells those apart on device.
-  local Runtime = require("src.mods.Runtime")
   local function bandFail(fmt, ...)
     local msg = string.format(fmt, ...)
     mod.log:warn("%s", msg)
@@ -415,7 +513,8 @@ return function(mod)
     if ball == "SNAG_BALL" and not mod.options:get("snag_ball_color") then
       return nil
     end
-    local c = COLORS[ball]
+    local c = resolveEntry(ball, { ball = ball, surface = "battle",
+                                   battle = activeBattle, game = gameRef })
     return c and c.line or nil
   end
 
@@ -479,7 +578,8 @@ return function(mod)
     if ball == "SNAG_BALL" and not mod.options:get("snag_ball_color") then
       return out
     end
-    local c = ball and COLORS[ball]
+    local c = ball and resolveEntry(ball, { ball = ball, surface = "battle",
+                                            battle = self, game = gameRef })
     if not c then
       if ball then warnMissingColor(ball) end
       return out
@@ -585,13 +685,42 @@ return function(mod)
   -- this version installed have no field and default to POKE_BALL --
   -- canon enough, and self-corrects as the party turns over.
   -- ------------------------------------------------------------------
+  --
+  -- A ball with a RESOLVER has no fixed colour, so the ball id alone is not
+  -- enough to redraw it later: "what colour was this caught in" has to be
+  -- answered now, while the context that decided it still exists.  A
+  -- KECLEON BALL caught against a forest is a forest colour forever, and
+  -- the Center is a room with nothing to camouflage against.
+  --
+  -- So the resolved answer is snapshotted onto the mon beside the ball id,
+  -- on both generations:
+  --   mon.caughtBallColor   -- Gen 1: the {body,accent,line} entry
+  --   mon.caughtBallPalette -- Gold:  the PAL_BATTLE_OB_* name
+  -- Only written for balls that actually have a resolver / a Gold palette,
+  -- so a normal ball adds no bytes to the save.
+  --
+  -- The resolver is asked once more here rather than reusing the throw
+  -- cache, because the catch may resolve after the chain cleared it.  That
+  -- assumes a resolver is stable within one battle -- true for anything
+  -- keyed on the opponent or the terrain, which is what "camouflage" means.
   mod.events:on("pokemon.caught", function(p)
-    if p and p.mon and p.ball and p.mon.caughtBall == nil then
-      p.mon.caughtBall = p.ball
+    if not (p and p.mon and p.ball) then return end
+    if p.mon.caughtBall == nil then p.mon.caughtBall = p.ball end
+    if p.mon.caughtBallColor == nil and RESOLVERS[p.ball] then
+      local entry = resolveEntry(p.ball, { ball = p.ball, surface = "catch",
+                                           battle = p.battle, mon = p.mon,
+                                           game = p.game or gameRef })
+      if entry then
+        -- a copy, not the resolver's table: it is theirs and may be reused
+        p.mon.caughtBallColor = { body = entry.body, accent = entry.accent,
+                                  line = entry.line }
+      end
+    end
+    if p.mon.caughtBallPalette == nil and goldPaletteName then
+      p.mon.caughtBallPalette = goldPaletteName(p.ball)
     end
   end)
 
-  local gameRef
   mod.events:on("game.ready", function(p) gameRef = p and p.game end)
 
   -- ------------------------------------------------------------------
@@ -697,7 +826,8 @@ return function(mod)
         local party = gameRef and gameRef.save and gameRef.save.party
         local mon = party and party[ballIndex]
         local ball = (mon and mon.caughtBall) or "POKE_BALL"
-        local c = COLORS[ball]
+        -- the snapshot first: a dynamic ball's colour was decided at catch
+        local c = (mon and mon.caughtBallColor) or COLORS[ball]
         if not c then warnMissingColor(ball) end
         if c then
           local sh = PaletteFX.shader()
@@ -775,12 +905,20 @@ return function(mod)
     -- WANT its answer, so call through rather than reimplementing the
     -- table -- with a dummy self, and in pcall, because that wrap is
     -- another mod's code and may not share the assumption.
-    local function paletteRowFor(ballId)
+    local function nameFor(ballId)
       local okName, name = pcall(BS2.ballPalette, {}, ballId)
-      if not (okName and type(name) == "string") then return nil end
+      if okName and type(name) == "string" then return name end
+      return nil
+    end
+    -- published for the catch handler, so a ball whose palette is dynamic
+    -- (Too Many Balls resolves KECLEON BALL's per throw) is pinned at catch
+    -- time rather than re-asked in a Center that has no battle to read
+    goldPaletteName = nameFor
+
+    local function rowForName(name)
       local set = game.data and game.data.gen2Palettes
         and game.data.gen2Palettes.battleObjects
-      local row = set and set[name]
+      local row = name and set and set[name]
       if type(row) == "table" and #row > 0 then return row end
       return nil
     end
@@ -812,7 +950,9 @@ return function(mod)
           ballIndex = ballIndex + 1
           local party = game.save and game.save.party
           local mon = party and party[ballIndex]
-          local row = paletteRowFor((mon and mon.caughtBall) or "POKE_BALL")
+          -- the pinned name first, then a live lookup for older catches
+          local row = rowForName((mon and mon.caughtBallPalette)
+            or nameFor((mon and mon.caughtBall) or "POKE_BALL"))
           if row and GbcPalette.available() then
             local prev = lg.getShader()
             GbcPalette.useRaw(
