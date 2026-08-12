@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.23"
+  local VERSION = "0.1.24"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -649,11 +649,32 @@ return function(mod)
   -- file wraps instead.
   --
   -- gen2check STILL reports MK404 on the two lines inside this `if`, and
-  -- that finding is a false positive: its guard detection is per-line
-  -- syntax (`X.y and`, `== `, `)`) and a WRITE cannot be spelled that way.
-  -- The branch genuinely does not run on Gold.  Do not rewrite these into
-  -- a dynamic index to make the tool go quiet -- that would hide a real
-  -- finding the next time one appears here.
+  -- the finding is a false positive: the branch genuinely does not run on
+  -- Gold.  MEASURED on v0.1.79, so the next audit does not have to re-run
+  -- it -- this is not "we think it cannot be fixed", it is tested:
+  --
+  --   * guard detection is PER-LINE syntax, not block-level
+  --     (tools/modkit.py:2652): the member must be immediately followed by
+  --     and/or/then/)/~=/== , or immediately preceded by if/and/or/not.
+  --   * spelling the READ as `... = OverworldState.drawWorld or nil` DOES
+  --     satisfy it and drops that line to a warning.
+  --   * the WRITE cannot be satisfied at all.  `X.y = ...` matches neither
+  --     shape, and there is no legal spelling of "wrap this function" that
+  --     does.  Aliasing does not help either: the scanner follows the
+  --     module through locals and bracket indexes.
+  --   * so the best reachable result is 1 error instead of 2, still FAIL.
+  --     Not worth redundant `or nil` noise inside a block that has already
+  --     type-checked the member.
+  --
+  -- Which leaves it a tooling gap, not a defect here.  Do NOT rewrite this
+  -- into a dynamic index to silence it: that turns the finding into an
+  -- `unresolved:` note and hides the next REAL one at this site.
+  --
+  -- There is also no alternative seam.  fxHeal is a local closure inside
+  -- drawWorld, and no world/heal hook exists on either generation
+  -- (grepped Runtime.call across src/ at 0.1.79), so wrapping drawWorld is
+  -- the only Gen 1 route.  Gold has its own seam, wrapped at the bottom of
+  -- this file.
   if type(OverworldState.drawWorld) == "function" then
   OverworldState._pbcOriginals = OverworldState._pbcOriginals
     or { drawWorld = OverworldState.drawWorld }

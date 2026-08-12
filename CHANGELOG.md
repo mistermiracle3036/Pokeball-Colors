@@ -4,6 +4,11 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.24
+- Notes only, no code or behaviour change. Verified against engine
+  **v0.1.79**: nothing in that release affects this mod, and the Gold heal
+  machine still works as shipped in 0.1.23.
+
 ## 0.1.23
 
 **Updating from 0.1.13?** Here is everything new since then.
