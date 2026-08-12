@@ -4,9 +4,44 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
-## 0.1.21
+## 0.1.22
 
 **Updating from 0.1.13?** Here is everything new since then.
+
+- **Pokemon Gold is supported now**, for the heal machine. Gold colours
+  thrown balls by itself, so there is nothing this mod needs to add in
+  battle there -- but its POKeMON CENTER lights every ball the same. Now
+  each one lights in the colours of the ball that Pokemon was actually
+  caught in, the same as on Red.
+- On Gold the colour is taken from the game's own ball colours, so a ball
+  looks the same on the machine as it did when you threw it. A ball from
+  another mod picks up whatever colour that mod gave it, with no setup.
+- The existing **"Colored balls at POKeMON CENTER"** toggle covers both
+  games.
+
+**Everything from the Red/Blue/Yellow side, unchanged**
+
+- **Thrown balls have a black band** along the seam, the way a real Poke
+  Ball does -- through the toss, the wobbles and the resting ball after a
+  catch. The POKe, GREAT, MASTER and SAFARI balls have one. The ULTRA BALL
+  is left alone on purpose: its dark half would swallow a black band
+  whole. Toggle **"Black band on thrown balls"** (default ON) puts it back
+  the way it was.
+- Balls from other mods keep their existing two-tone look until their own
+  mod opts in.
+- **"DEV: every ball sold in marts"** (default OFF) stocks every mart with
+  every ball in the game, so you can get hold of a MASTER BALL and see
+  what it looks like thrown. Turning it off restores the normal shelves.
+- The mod carries a **LICENSE** (MIT) and fuller credits.
+- Releases are built by a workflow, so the download has the right shape
+  and always includes the notices file.
+
+Known and **not** a bug: on Red/Blue/Yellow the ULTRA BALL appears to flip
+upside down during the throw and settle during the wobbles. That is the
+Master/Ultra palette strobe, which the original game does and this mod has
+always rendered in the ball's own colours.
+
+## 0.1.21
 
 - **Thrown balls now have a black band** along the seam, the way a real
   Poke Ball does -- through the toss, the wobbles and the resting ball

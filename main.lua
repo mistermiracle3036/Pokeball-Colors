@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.21"
+  local VERSION = "0.1.22"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -645,7 +645,15 @@ return function(mod)
   -- reads nil (gen2check MK404).  Installing over it would write a wrapper
   -- nothing calls and stash a nil "original", so skip it entirely and
   -- leave the Center alone there.  Gold's heal machine is a different
-  -- screen and would need its own seam anyway.
+  -- screen with its own seam, which the Gold block at the bottom of this
+  -- file wraps instead.
+  --
+  -- gen2check STILL reports MK404 on the two lines inside this `if`, and
+  -- that finding is a false positive: its guard detection is per-line
+  -- syntax (`X.y and`, `== `, `)`) and a WRITE cannot be spelled that way.
+  -- The branch genuinely does not run on Gold.  Do not rewrite these into
+  -- a dynamic index to make the tool go quiet -- that would hide a real
+  -- finding the next time one appears here.
   if type(OverworldState.drawWorld) == "function" then
   OverworldState._pbcOriginals = OverworldState._pbcOriginals
     or { drawWorld = OverworldState.drawWorld }
@@ -691,23 +699,126 @@ return function(mod)
   end
   end -- drawWorld capability gate
 
-  -- Gold needs none of this, and that is the finding, not a gap.
+  -- ------------------------------------------------------------------
+  -- GOLD: the heal machine (0.1.22)
   --
-  -- Gold colours a thrown ball itself from the ROM's own ball_colors.asm
-  -- (src/ui/gen2/BattleState.lua:2101 ballPalette -> env.ballPalette), so
-  -- the Gen 1 problem this whole mod exists to solve does not exist there.
-  -- The one thing left would be mod-added balls, which are not in Gold's
-  -- table and fall to PAL_BATTLE_OB_GRAY -- but a custom ball does not
-  -- FUNCTION on Gold yet either (the opts passed to Catching.attempt carry
-  -- no `data`, src/ui/gen2/BattleState.lua:2578), and no ball mod declares
-  -- Gen 2, so on a Gold boot there are no mod balls to colour in the first
-  -- place.  Nothing to do, rather than something blocked halfway.
+  -- Gold needs nothing from this mod for a ball THROW -- it colours those
+  -- itself from the cart's own ball_colors.asm
+  -- (src/ui/gen2/BattleState.lua:2101).  The Pokemon Center light show is
+  -- the gap: World:drawHealAnim paints every ball through ONE palette
+  -- (src/world/gen2/World.lua:6288-6327), so a party of six lands six
+  -- identical lights whatever caught them.
   --
-  -- So this mod stays Gen 1 only, deliberately, and does not declare
-  -- `games`.  Revisit only when BOTH of these land: a custom ball working
-  -- in a Gold catch, and ball mods claiming Gen 2.  Then the job is narrow
-  -- -- register a battleObjects palette and wrap ballPalette -- and 0.1.20
-  -- in the history has the spike that was going to prove it.
+  -- Three things make this cheap, all verified rather than assumed:
+  --   * `pokemon.caught` fires on Gold with the SAME name and the same
+  --     payload keys, `ball` included -- the engine says so in as many
+  --     words at src/ui/gen2/BattleState.lua:2283-2295 ("one subscription
+  --     covers both games").  So the mon.caughtBall handler above already
+  --     works there, unchanged, with no branch.
+  --   * Gen 2 saves through the same generic SaveSerializer
+  --     (src/core/gen2/Save.lua:11), so the field persists as it does on
+  --     Red.
+  --   * The balls are drawn one per party member in party order, through a
+  --     stable quad identity -- the same shape the Gen 1 shim above keys
+  --     off, so the technique carries over.
+  --
+  -- The colour comes from the ENGINE, not from the COLORS table above:
+  -- ballPalette(id) names a palette and gen2Palettes.battleObjects holds
+  -- it.  That is deliberate and it is the whole reason this is cheap --
+  -- the Center then matches what the throw actually looked like, for
+  -- native balls AND for any mod ball whose own mod registered a palette
+  -- (kanto_balls 0.4.2 owns that wrap and its registerBallPalette).  One
+  -- source of truth, no second colour table to drift, and no coordination
+  -- between the two mods.  A ball nobody registered throws grey and lights
+  -- grey, which is correct: the fix is to register it, and that fixes
+  -- both at once.
+  -- ------------------------------------------------------------------
+  local function installGoldCenter(game)
+    local okGP, GbcPalette = pcall(require, "src.render.GbcPalette")
+    local okW, World = pcall(require, "src.world.gen2.World")
+    local okBS, BS2 = pcall(require, "src.ui.gen2.BattleState")
+    if not (okGP and okW and okBS
+            and type(World) == "table"
+            and type(World.drawHealAnim) == "function"
+            and type(BS2) == "table"
+            and type(BS2.ballPalette) == "function") then
+      Runtime.reportError("pokeball_colors",
+        "Gold Center: seam missing, balls stay uncoloured")
+      return
+    end
+
+    -- ballPalette is written as a method but reads nothing off self
+    -- (src/ui/gen2/BattleState.lua:2101).  kanto_balls wraps it, and we
+    -- WANT its answer, so call through rather than reimplementing the
+    -- table -- with a dummy self, and in pcall, because that wrap is
+    -- another mod's code and may not share the assumption.
+    local function paletteRowFor(ballId)
+      local okName, name = pcall(BS2.ballPalette, {}, ballId)
+      if not (okName and type(name) == "string") then return nil end
+      local set = game.data and game.data.gen2Palettes
+        and game.data.gen2Palettes.battleObjects
+      local row = set and set[name]
+      if type(row) == "table" and #row > 0 then return row end
+      return nil
+    end
+
+    World._pbcOriginals = World._pbcOriginals
+      or { drawHealAnim = World.drawHealAnim }
+    local vanillaDrawHeal = World._pbcOriginals.drawHealAnim
+    World.drawHealAnim = function(self, ...)
+      local ha = self.healAnim
+      if not (ha and mod.options:get("enabled")
+              and mod.options:get("center_balls")) then
+        return vanillaDrawHeal(self, ...)
+      end
+
+      -- the machine's own flash: eight rotations of the OBJ palette, which
+      -- the engine folds in as an rBGP-style byte.  Rebuilt here from the
+      -- same rotation so a recoloured ball flashes with the rest instead
+      -- of sitting still through the jingle (World.lua:6309-6312).
+      local byte = 0
+      for i = 0, 3 do byte = byte + ((i + ha.rotation) % 4) * (4 ^ i) end
+
+      local lg = love.graphics
+      local vanillaDraw = lg.draw
+      local ballIndex = 0
+      lg.draw = function(img, quad, ...)
+        local quads = self.healMachineQuads
+        if img ~= nil and img == self.healMachineImage
+           and quads and quad == quads.ball then
+          ballIndex = ballIndex + 1
+          local party = game.save and game.save.party
+          local mon = party and party[ballIndex]
+          local row = paletteRowFor((mon and mon.caughtBall) or "POKE_BALL")
+          if row and GbcPalette.available() then
+            local prev = lg.getShader()
+            GbcPalette.useRaw(
+              GbcPalette.remap(GbcPalette.resolve(row), byte))
+            vanillaDraw(img, quad, ...)
+            lg.setShader(prev)
+            return
+          end
+        end
+        return vanillaDraw(img, quad, ...)
+      end
+
+      local ok, err = pcall(vanillaDrawHeal, self, ...)
+      lg.draw = vanillaDraw
+      if not ok then error(err) end
+    end
+
+    mod.log:info("pokeball_colors: Gold heal machine colouring installed")
+  end
+
+  -- Capability, not a version name: gen2Palettes existing IS the Gen 2
+  -- boot, and it is the very table the colours are read out of.  game.ready
+  -- is the first point game.data is populated.
+  mod.events:on("game.ready", function(p)
+    local game = p and p.game
+    if game and game.data and game.data.gen2Palettes then
+      installGoldCenter(game)
+    end
+  end)
 
   mod.log:info("pokeball_colors %s loaded", VERSION)
 end

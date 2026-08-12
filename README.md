@@ -25,10 +25,13 @@ changed by this mod.
 
 ## Requirements
 
-- **COLORS must be set to ADVANCED.** This mod does nothing in the
-  mono/classic color modes — those deliberately have no per-sprite
-  color to give, and the mod passes them straight through.
-- gen1recomp **0.1.38 or newer**. No hard mod dependencies.
+- **Red, Blue and Yellow:** COLORS must be set to **ADVANCED**. The mod
+  does nothing in the mono/classic color modes — those deliberately have
+  no per-sprite color to give, and it passes them straight through.
+- **Gold:** nothing to set. Gold colors thrown balls by itself, so on
+  Gold this mod only does the Pokémon Center heal machine.
+- gen1recomp **0.1.38 or newer** (Gold support needs **0.1.78+**, and is
+  simply inactive on older builds). No hard mod dependencies.
 
 ## What gets colored
 
@@ -69,7 +72,7 @@ Open **MODS → POKEBALL COLORS → OPTIONS** (F10 mod manager):
 | ------ | ------- | ------ |
 | COLORED BALLS (ADVANCED MODE) | ON | Master switch for all ball coloring |
 | ROCKET-COLORED SNAG BALL | ON | Snag Ball throws in black/red instead of its normal colors |
-| COLORED BALLS AT POKeMON CENTER | ON | The heal machine's balls use each mon's caught ball |
+| COLORED BALLS AT POKeMON CENTER | ON | The heal machine's balls use each mon's caught ball (both games) |
 | BLACK BAND ON THROWN BALLS | ON | The black band along a thrown ball's seam |
 | DEV: EVERY BALL SOLD IN MARTS | OFF | Every mart stocks every ball in the game |
 
@@ -113,7 +116,14 @@ and relaunch afterward so the new code is actually live.
   at load. This mod renders it; it doesn't define it. On Snag Quest
   0.10.x the Snag Ball simply throws in vanilla colors.
 - **Dramatic Shape (voxel mode)** — tested and working in voxel mode.
-- Works in Red, Blue and Yellow — nothing here touches map or text data.
+- Works in Red, Blue, Yellow **and Gold** — nothing here touches map or
+  text data.
+- **On Gold, other ball mods need no setup here.** The heal machine reads
+  the colour the game itself uses for a thrown ball, so a ball picks up
+  whatever palette its own mod registered — **Kanto Balls 0.4.2+** owns
+  that side and exposes `registerBallPalette` for other ball mods to use.
+  A ball nobody has registered throws grey and lights grey, which is
+  consistent rather than broken.
 
 ## For mod authors
 
@@ -141,6 +151,13 @@ entries and logs anything malformed. Returns `added, skipped`.
 Colors apply everywhere this mod renders — the battle toss, the shakes,
 the resting caught ball, and the Pokemon Center heal machine — with no
 extra work per surface.
+
+**This is the Red/Blue/Yellow route.** Gold colours thrown balls itself,
+so `registerColors` does nothing there; on Gold the heal machine reads the
+game's own ball palette instead, which means a ball registered through
+**Kanto Balls 0.4.2+**'s `registerBallPalette` is coloured on the machine
+with no call to this mod at all. Registering in both places is the right
+thing to do, and neither knows or cares about the other.
 
 If a ball is thrown with no color registered, this mod logs one warning
 naming that ball id, so a missing registration says so instead of

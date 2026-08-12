@@ -1,11 +1,15 @@
 {
   "id": "pokeball_colors",
   "name": "Pokeball Colors",
-  "version": "0.1.21",
+  "version": "0.1.22",
   "api": 2,
   "entry": "main.lua",
   "profile": "content",
   "category": "COSMETIC",
+  "games": [
+    "gen1",
+    "gen2"
+  ],
   "game_version": ">=0.1.38 <2.0.0",
   "priority": 200,
   "affects_link": false,
@@ -19,5 +23,5 @@
   ],
   "conflicts": [],
   "github": "mistermiracle3036/Pokeball-Colors",
-  "description": "Per-ball colors for the battle ball toss under the ADVANCED color mode: all five native balls plus the nine Custom Pok\u00e9 Balls mod balls."
+  "description": "Per-ball colors for the battle ball toss under the ADVANCED color mode, and for the Pokemon Center heal machine on both Red/Blue/Yellow and Gold."
 }
