@@ -4,7 +4,7 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
-## 0.1.22
+## 0.1.23
 
 **Updating from 0.1.13?** Here is everything new since then.
 
@@ -18,6 +18,9 @@ always matches the version in `manifest.json`.
   another mod picks up whatever colour that mod gave it, with no setup.
 - The existing **"Colored balls at POKeMON CENTER"** toggle covers both
   games.
+- Tested and working alongside **Too Many Balls** (formerly Kanto Balls)
+  on both Red and Gold -- its balls colour correctly in battle on Red and
+  on the heal machine in both games, with nothing to configure.
 
 **Everything from the Red/Blue/Yellow side, unchanged**
 
@@ -40,6 +43,10 @@ Known and **not** a bug: on Red/Blue/Yellow the ULTRA BALL appears to flip
 upside down during the throw and settle during the wobbles. That is the
 Master/Ultra palette strobe, which the original game does and this mod has
 always rendered in the ball's own colours.
+
+## 0.1.22
+- Gold heal machine colouring (folded into 0.1.23's notes above; never
+  released separately).
 
 ## 0.1.21
 

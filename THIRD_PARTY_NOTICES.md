@@ -8,6 +8,11 @@
   (https://github.com/magalvao/custom-pokeballs) — optional integration. This mod adds no code
   from it and ships none of its assets; the nine ball colors here were
   sampled by eye from its sprite art and re-entered as plain RGB values.
+- **Too Many Balls** (formerly *Kanto Balls*; mod id `kanto_balls`,
+  https://github.com/mistermiracle3036/Too-Many-Balls) — optional
+  integration, by the same author. It owns its own balls and, on Gold,
+  owns the ball-palette wrap this mod's heal machine reads through. No
+  code or assets are shared in either direction.
 - **Snag Quest** — optional integration. Its Snag Ball record is patched
   from outside via the public balls registry. Snag Quest itself is
   unmodified.

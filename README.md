@@ -7,8 +7,9 @@ happens to be using — a Great Ball throws blue, an Ultra Ball throws
 gold, a Dusk Ball throws near-black with a gold glint.
 
 Covers the five native balls, all nine balls from the **Custom
-Pokeballs** mod, and the **Snag Ball** from **Snag Quest** — which also
-gets a Master-Ball-tier throw as a bonus.
+Pokeballs** mod, the balls from **Too Many Balls**, and the **Snag Ball**
+from **Snag Quest** — which also gets a Master-Ball-tier throw as a
+bonus.
 
 > **Development Preview:** Pokeball Colors is in active development. Bug
 > reports and ideas are welcome in [GitHub Issues](../../issues) —
@@ -118,12 +119,17 @@ and relaunch afterward so the new code is actually live.
 - **Dramatic Shape (voxel mode)** — tested and working in voxel mode.
 - Works in Red, Blue, Yellow **and Gold** — nothing here touches map or
   text data.
+- **Too Many Balls** (formerly *Kanto Balls*; mod id `kanto_balls`,
+  [repo](https://github.com/mistermiracle3036/Too-Many-Balls)) — optional,
+  and **confirmed working alongside this mod on both Red and Gold**. Its
+  balls colour automatically through `registerColors` on Red/Blue/Yellow.
 - **On Gold, other ball mods need no setup here.** The heal machine reads
   the colour the game itself uses for a thrown ball, so a ball picks up
-  whatever palette its own mod registered — **Kanto Balls 0.4.2+** owns
-  that side and exposes `registerBallPalette` for other ball mods to use.
-  A ball nobody has registered throws grey and lights grey, which is
-  consistent rather than broken.
+  whatever palette its own mod registered — **Too Many Balls 0.4.2+** owns
+  that side (`exports.owns.ballPalettesGen2`) and exposes
+  `registerBallPalette` for other ball mods to use. A ball nobody has
+  registered throws grey and lights grey, which is consistent rather than
+  broken.
 
 ## For mod authors
 
@@ -155,9 +161,9 @@ extra work per surface.
 **This is the Red/Blue/Yellow route.** Gold colours thrown balls itself,
 so `registerColors` does nothing there; on Gold the heal machine reads the
 game's own ball palette instead, which means a ball registered through
-**Kanto Balls 0.4.2+**'s `registerBallPalette` is coloured on the machine
-with no call to this mod at all. Registering in both places is the right
-thing to do, and neither knows or cares about the other.
+**Too Many Balls 0.4.2+**'s `registerBallPalette` is coloured on the
+machine with no call to this mod at all. Registering in both places is the
+right thing to do, and neither knows or cares about the other.
 
 If a ball is thrown with no color registered, this mod logs one warning
 naming that ball id, so a missing registration says so instead of

@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.22"
+  local VERSION = "0.1.23"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -106,8 +106,8 @@ return function(mod)
   -- crescent and read as nothing.  The nine custom_pokeballs entries are
   -- likewise left alone -- those colors were sampled from that mod's own
   -- art and this mod has no basis to invent a band for someone else's
-  -- ball.  Their author (and Kanto Balls, for GS/PREMIER) can opt in
-  -- through registerColors at any time.
+  -- ball.  Their author (and Too Many Balls, mod id kanto_balls, for
+  -- GS/PREMIER) can opt in through registerColors at any time.
   local BLACK = { 0, 0, 0 }
   local COLORS = {
     -- native
@@ -727,7 +727,9 @@ return function(mod)
   -- it.  That is deliberate and it is the whole reason this is cheap --
   -- the Center then matches what the throw actually looked like, for
   -- native balls AND for any mod ball whose own mod registered a palette
-  -- (kanto_balls 0.4.2 owns that wrap and its registerBallPalette).  One
+  -- (Too Many Balls, mod id kanto_balls, 0.4.2+ -- it owns that wrap,
+  -- declares exports.owns.ballPalettesGen2 and exposes
+  -- registerBallPalette).  One
   -- source of truth, no second colour table to drift, and no coordination
   -- between the two mods.  A ball nobody registered throws grey and lights
   -- grey, which is correct: the fix is to register it, and that fixes

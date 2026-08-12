@@ -1,16 +1,24 @@
 return {
-  summary = "Gives every ball its own colors under the ADVANCED color mode: the 5 native balls, the 9 Custom Poké Balls balls, and Snag Quest's SNAG BALL.",
+  summary = "Gives every ball its own colors: the 5 native balls, the 9 Custom Poké Balls balls, Too Many Balls' balls and Snag Quest's SNAG BALL -- in battle on Red/Blue/Yellow, and on the POKéMON CENTER heal machine on Gold too.",
   author = "Mister Miracle",
   tags = { "cosmetic", "battle", "colors", "pokeballs" },
   differences = {
     "Under COLORS = ADVANCED, each thrown ball renders in its own body/accent colors instead of the SGB zone palette -- on the toss, the wobbles, and the resting caught ball.",
+    "Thrown balls get a black band along the seam, the way a real Poke Ball has. POKe, GREAT, MASTER and SAFARI have one; ULTRA is left two-tone because its dark half would swallow it. Toggle it off to get the old look back.",
+    "At the POKeMON CENTER, each ball on the heal machine lights in the colors of the ball that Pokemon was actually caught in. Works on Red, Blue, Yellow AND Gold.",
+    "On Gold that heal machine is all this mod does -- Gold already colors thrown balls itself, and it takes each ball's Center color from the game's own palette so the machine matches the throw.",
     "Balls whose record sets flicker (Master, Ultra, and SNAG BALL from Snag Quest 0.10.2+) strobe between their own two colors instead of the palette's.",
     "Poof clouds and every other animation keep vanilla colors. Mono and non-ADVANCED color modes are untouched, as are catch rates, items and marts.",
   },
-  credits = { "Colors for the nine balls from Custom Poke Balls by magalvao (github.com/magalvao/custom-pokeballs) were matched by eye to that mod's own sprite art; no assets are used or redistributed." },
+  credits = {
+    "Colors for the nine balls from Custom Poke Balls by magalvao (github.com/magalvao/custom-pokeballs) were matched by eye to that mod's own sprite art; no assets are used or redistributed.",
+    "MIT licensed. Pokemon and all related names are trademarks of Nintendo / Creatures Inc. / GAME FREAK inc; this is an unofficial fan project.",
+  },
   compat = {
     "Optional: custom_pokeballs (its 9 balls color when present; harmless without it).",
+    "Optional: kanto_balls -- Too Many Balls (tested together on Red and Gold; its balls color with nothing to configure).",
     "Optional: snag_quest (colors its SNAG BALL; snag_quest owns that ball's tossAnim and flicker, this mod never patches them).",
-    "Publishes exports.colors so other mods can add entries for their own balls.",
+    "Publishes exports.registerColors and exports.colors so other mods can add colors for their own balls.",
+    "On Gold, a ball's color comes from whatever palette its own mod registered (Too Many Balls owns that side), so nothing needs registering here.",
   },
 }
