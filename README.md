@@ -11,6 +11,14 @@ Pokeballs** mod, the balls from **Too Many Balls**, and the **Snag Ball**
 from **Snag Quest** — which also gets a Master-Ball-tier throw as a
 bonus.
 
+**Some balls don't have a fixed colour at all.** On **Gold**, Too Many
+Balls' **KECLEON BALL** takes its colour from whatever you throw it at —
+yellow at a Pikachu, pink at a Slowpoke, shiny colours at a shiny — and the
+Pokémon Center then shows it in the colour it was caught with. On Red, Blue
+and Yellow that ball is a fixed green-and-red for now; whether it goes
+dynamic there is its own mod's call. The support for it is in place on both
+(see [For mod authors](#for-mod-authors)).
+
 > **Development Preview:** Pokeball Colors is in active development. Bug
 > reports and ideas are welcome in [GitHub Issues](../../issues) —
 > please include the version number from your load log and which other
@@ -53,6 +61,7 @@ changed by this mod.
 | Level Ball *(Custom Poké Balls)* | Gold with black |
 | Dive Ball *(Custom Poké Balls)* | Sea blue |
 | Snag Ball *(Snag Quest)* | Colored by Snag Quest itself (0.11.x+) — Team Rocket black and red, strobing through its Ultra-style throw |
+| Kecleon Ball *(Too Many Balls)* | On Gold, no fixed colour — takes the colour of whatever you throw it at. Green-and-red on Red/Blue/Yellow |
 
 Balls from mods this one doesn't know about keep their vanilla colors.
 

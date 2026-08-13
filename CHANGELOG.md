@@ -4,6 +4,16 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.28
+
+**Updating from 0.1.23?** Everything in 0.1.27's notes below still applies;
+this adds documentation only.
+
+- Documentation only -- no code or behaviour change from 0.1.27.
+- The README and FAQ now cover balls whose colour is not fixed, the heal
+  machine on both games, and why a ball can throw grey on Gold (its own mod
+  hasn't given it a colour -- that's a report for that mod, not this one).
+
 ## 0.1.27
 
 **Updating from 0.1.23?** This release is about balls whose colour is not
