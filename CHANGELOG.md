@@ -4,6 +4,27 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.27
+
+**Updating from 0.1.23?** This release is about balls whose colour is not
+fixed -- the kind that take their colour from what you throw them at.
+
+- **Ball mods can now give a ball a colour that is decided at the moment
+  you throw it.** The first is Too Many Balls' **KECLEON BALL**, which
+  turns the colour of its target.
+- **At the POKeMON CENTER, such a ball shows the colour it was caught
+  with.** A Pikachu caught in a Kecleon Ball lights yellow on the heal
+  machine, a Slowpoke pink -- matching what the ball looked like at the
+  throw. A shiny target gives a shiny-coloured ball, and that is kept too.
+  This works on Red, Blue, Yellow and Gold.
+- Nothing changes for any ball that already had a fixed colour, and no
+  extra data is stored on a Pokemon caught in one.
+- Verified against engine **v0.1.79**.
+
+*If you caught something in a Kecleon Ball while testing 0.1.25, its heal
+machine colour was wrong (green) and stays wrong -- catch it again to fix
+it. Nothing released was ever affected.*
+
 ## 0.1.26
 - **Fixed: a KECLEON BALL showed green on the heal machine** instead of the
   colour of the Pokemon it caught. A Pikachu caught in one now lights
