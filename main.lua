@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.25"
+  local VERSION = "0.1.26"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -95,7 +95,7 @@ return function(mod)
   -- declared here on purpose.
   local activeBattle      -- the BattleState whose ball chain is running
   local gameRef           -- the live game, from game.ready
-  local goldPaletteName   -- Gold only: fn(ballId) -> PAL_BATTLE_OB_* name
+  local goldPinFor        -- Gold only: fn(ball, mon, battle) -> name, row
 
   -- { body = the ball's main color, accent = its smaller highlight },
   -- 0-255 RGB.  CONFIRMED from a 0.1.0 capture: under the f0 shade map
@@ -166,6 +166,7 @@ return function(mod)
     caughtBallField = "mon.caughtBall",
     caughtBallColorField = "mon.caughtBallColor",
     caughtBallPaletteField = "mon.caughtBallPalette",
+    caughtBallPaletteRowField = "mon.caughtBallPaletteRow",
     colorResolvers = true,
   }
 
@@ -716,8 +717,15 @@ return function(mod)
                                   line = entry.line }
       end
     end
-    if p.mon.caughtBallPalette == nil and goldPaletteName then
-      p.mon.caughtBallPalette = goldPaletteName(p.ball)
+    if p.mon.caughtBallPalette == nil and p.mon.caughtBallPaletteRow == nil
+       and goldPinFor then
+      local name, row = goldPinFor(p.ball, p.mon, p.battle)
+      -- a SYMBOLIC name (PAL_BATTLE_OB_ENEMY) means "whatever is in front of
+      -- you", which is meaningless once the battle is over -- pin the
+      -- resolved colours instead.  A plain name pins as a name: smaller, and
+      -- it keeps following its mod if that mod retunes the palette later.
+      if row then p.mon.caughtBallPaletteRow = row
+      elseif name then p.mon.caughtBallPalette = name end
     end
   end)
 
@@ -905,15 +913,18 @@ return function(mod)
     -- WANT its answer, so call through rather than reimplementing the
     -- table -- with a dummy self, and in pcall, because that wrap is
     -- another mod's code and may not share the assumption.
-    local function nameFor(ballId)
-      local okName, name = pcall(BS2.ballPalette, {}, ballId)
+    local okPal, Palettes = pcall(require, "src.world.gen2.Palettes")
+
+    -- `self` matters: Too Many Balls' KECLEON BALL answers
+    -- "PAL_BATTLE_OB_ENEMY" when `self.battle.enemy` exists, and its own
+    -- green otherwise.  Passing a bare {} asks the question with the
+    -- context removed, which is how 0.1.25 pinned every Kecleon catch as
+    -- green.  Hand it something shaped like the screen instead.
+    local function nameFor(ballId, battle)
+      local okName, name = pcall(BS2.ballPalette, { battle = battle }, ballId)
       if okName and type(name) == "string" then return name end
       return nil
     end
-    -- published for the catch handler, so a ball whose palette is dynamic
-    -- (Too Many Balls resolves KECLEON BALL's per throw) is pinned at catch
-    -- time rather than re-asked in a Center that has no battle to read
-    goldPaletteName = nameFor
 
     local function rowForName(name)
       local set = game.data and game.data.gen2Palettes
@@ -921,6 +932,29 @@ return function(mod)
       local row = name and set and set[name]
       if type(row) == "table" and #row > 0 then return row end
       return nil
+    end
+
+    -- What to remember about a ball at the moment it catches something.
+    --
+    -- Two shapes come back from ballPalette.  A plain name indexes
+    -- battleObjects and is pinned as-is.  The SYMBOLIC ones the engine
+    -- special-cases -- PAL_BATTLE_OB_ENEMY / _PLAYER -- are not in that
+    -- table at all; objPalette resolves them against the LIVE battle
+    -- (BattleAnimView.lua:95-103).  A Pokemon Center has no battle, so a
+    -- pinned symbolic name would draw unpaletted.  Resolve it here, while
+    -- the answer still exists -- and the thing it refers to is precisely
+    -- the mon being caught, which is why this reads so naturally: a
+    -- KECLEON BALL that caught a PIKACHU is Pikachu-coloured forever.
+    goldPinFor = function(ballId, mon, battle)
+      local name = nameFor(ballId, battle)
+      if not name then return nil, nil end
+      if rowForName(name) then return name, nil end          -- plain: pin the name
+      if okPal and Palettes and Palettes.monColors and mon and mon.species then
+        local row = Palettes.monColors(game.data and game.data.gen2Palettes,
+                                       mon.species, mon.shiny)
+        if type(row) == "table" and #row > 0 then return nil, row end
+      end
+      return name, nil
     end
 
     World._pbcOriginals = World._pbcOriginals
@@ -951,8 +985,9 @@ return function(mod)
           local party = game.save and game.save.party
           local mon = party and party[ballIndex]
           -- the pinned name first, then a live lookup for older catches
-          local row = rowForName((mon and mon.caughtBallPalette)
-            or nameFor((mon and mon.caughtBall) or "POKE_BALL"))
+          local row = (mon and mon.caughtBallPaletteRow)
+            or rowForName((mon and mon.caughtBallPalette)
+              or nameFor((mon and mon.caughtBall) or "POKE_BALL", nil))
           if row and GbcPalette.available() then
             local prev = lg.getShader()
             GbcPalette.useRaw(

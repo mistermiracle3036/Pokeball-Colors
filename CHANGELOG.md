@@ -4,6 +4,15 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.26
+- **Fixed: a KECLEON BALL showed green on the heal machine** instead of the
+  colour of the Pokemon it caught. A Pikachu caught in one now lights
+  yellow, a Slowpoke pink -- matching what the ball looked like when you
+  threw it.
+- Only affects Gold, and only balls whose colour comes from what they are
+  thrown at. Pokemon caught this way before 0.1.26 keep the old green; catch
+  them again to correct it.
+
 ## 0.1.25
 - **Balls can now have a colour that is decided when you throw them**, not
   fixed in advance -- for balls like Too Many Balls' KECLEON BALL that take
