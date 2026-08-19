@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.30"
+  local VERSION = "0.1.31"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -298,11 +298,24 @@ return function(mod)
   -- anim palette pass produces the same contradiction and gets the same
   -- answer, including ones written after this.
   -- ------------------------------------------------------------------
-  -- `bandDisabled` means "another mod owns the ball animation and our
+  -- `conflictDetected` means "another mod owns the ball animation and our
   -- palette never reaches it".  What happens then is the PLAYER'S choice:
   -- defer (default) and let that mod's own artwork show, or take the ball
   -- back with "My ball colors over other mods" -- see bakedSheet below.
-  local bandSheetUsed, bandColorRan, bandDisabled = false, false, false
+  -- 0.1.31: the verdict is keyed on whether we EXPECTED to colour this
+  -- ball, not on whether we swapped the band sheet in.  0.1.30 used the
+  -- sheet swap, which only ever happens for a ball that HAS a `line` -- so
+  -- a PREMIER BALL (a colour but no band, like every mod ball) never
+  -- tripped the detector, the conflict was never noticed, and the takeover
+  -- toggle could not engage whichever way it was set.  Reported from
+  -- device, and the reason 0.1.30 looked like it did nothing.
+  --
+  -- `colorPassEverRan` also gates the band swap now.  Until our palette has
+  -- been seen to reach a ball once, the re-indexed sheet is not safe to
+  -- serve: raw-blitted it is grey with a black band, which is the original
+  -- screenshot.  Costs the black band on the first throw of a session.
+  local chainWanted, bandColorRan = false, false
+  local conflictDetected, colorPassEverRan = false, false
 
   local RESOLVERS = {}
   local resolverDead = {}
@@ -421,17 +434,22 @@ return function(mod)
   BattleState.ballChain = function(self, tossAnim, caught, shakes, ball)
     self._pbcBall = ball
     activeBattle = self
-    throwCache = {}          -- a new throw re-asks every resolver exactly once
-    -- verdict on the chain that just finished (see the note above)
-    if bandSheetUsed and not bandColorRan and not bandDisabled then
-      bandDisabled = true
-      mod.log:warn("banded balls off: another mod is drawing the ball "
-        .. "animation without this mod's palette, so the re-indexed art "
-        .. "would render as grey with a black band")
-      Runtime.reportError("pokeball_colors",
-        "band off: another mod owns ball art")
+    -- verdict on the chain that just finished: we had a colour for that
+    -- ball and our palette never reached it, so something else is drawing
+    -- the ball animation
+    if chainWanted and not bandColorRan and not conflictDetected then
+      conflictDetected = true
+      mod.log:warn("another mod is drawing the ball animation without this "
+        .. "mod's palette; deferring to its art unless the player has asked "
+        .. "to override")
+      Runtime.reportError("pokeball_colors", "another mod owns ball art")
     end
-    bandSheetUsed, bandColorRan = false, false
+    throwCache = {}          -- a new throw re-asks every resolver exactly once
+    bandColorRan = false
+    chainWanted = ball ~= nil and mod.options:get("enabled")
+      and PaletteFX.mode == "redpp"
+      and resolveEntry(ball, { ball = ball, surface = "battle",
+                               battle = self, game = gameRef }) ~= nil
     return vanillaBallChain(self, tossAnim, caught, shakes, ball)
   end
 
@@ -620,7 +638,10 @@ return function(mod)
   -- wrap applies, so the art and the palette can never disagree.
   local function bandColor(ball)
     if not ball then return nil end
-    if bandDisabled then return nil end
+    if conflictDetected then return nil end
+    -- never serve the re-indexed sheet before our palette is known to land
+    -- on it; blitted raw it is grey with a black band
+    if not colorPassEverRan then return nil end
     if PaletteFX.mode ~= "redpp" then return nil end
     if not mod.options:get("enabled") then return nil end
     if not mod.options:get("ball_band") then return nil end
@@ -658,7 +679,7 @@ return function(mod)
   local vanillaSheetImage = AnimPlayer._pbcOriginals.sheetImage
   AnimPlayer.sheetImage = function(self, ts)
     if ts == 0 and self._pbcMove and BALL_MOVES[self._pbcMove] then
-      if bandDisabled then
+      if conflictDetected then
         -- another mod owns the draw.  Defer unless the player said not to.
         if mod.options:get("enabled") and mod.options:get("ball_art_takeover")
            and PaletteFX.mode == "redpp" then
@@ -670,10 +691,7 @@ return function(mod)
         end
       elseif bandColor(ballOf(self)) then
         local img = bandSheet(self)
-        if img then
-          bandSheetUsed = true
-          return img
-        end
+        if img then return img end
       end
     end
     return vanillaSheetImage(self, ts)
@@ -729,7 +747,7 @@ return function(mod)
     -- dark shade, so a band that held still through the Master/Ultra
     -- flash is what the hardware does.
     local line = bandColor(ball)
-    bandColorRan = true      -- our palette reached this ball's sprites
+    bandColorRan, colorPassEverRan = true, true
     return { accent, body, line and norm(line) or body }
   end
 

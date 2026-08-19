@@ -4,6 +4,16 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.31
+- **Fixed: MY BALL COLORS OVER OTHER MODS did nothing.** 0.1.30 only
+  noticed the clash for balls that have a black band, so any other ball --
+  a PREMIER BALL, and every ball from another mod -- lost silently with the
+  option on or off. It now notices for any ball it has a colour for.
+- The first throw after loading may still show the other mod's ball; from
+  the second throw on, your choice applies.
+- Also gone: the grey ball with a black band. That art is no longer used
+  until the mod has confirmed its colours are actually reaching the ball.
+
 ## 0.1.30
 - **Fixed: balls could throw grey with a black band** alongside a mod that
   brings its own ball artwork -- **Gold & Silver Sprites** is the one this
