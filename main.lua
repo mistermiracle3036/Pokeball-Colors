@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.28"
+  local VERSION = "0.1.29"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -270,6 +270,34 @@ return function(mod)
   -- A resolver that throws is disabled for the session and reported to
   -- [ERRS] rather than being retried every frame inside a draw loop.
   -- ------------------------------------------------------------------
+  -- ------------------------------------------------------------------
+  -- Self-check: the band sheet is only correct if WE supply the palette.
+  --
+  -- The re-indexed sheet moves the seam onto DMG index 3 and the outline
+  -- onto 2, which is right when animSpriteColors hands back
+  -- { accent, body, line } and WRONG if anything blits it raw: index 3 is
+  -- black, so the ball comes out GB-grey with a black band.  That is not
+  -- hypothetical -- Gold & Silver Sprites 1.4.2 ships its own pre-coloured
+  -- ball art and wraps AnimPlayer.draw/drawSprites to pass `colorFn = nil`
+  -- in true-colour mode, so our colour wrap is never called while our sheet
+  -- wrap still fires.  Reported from a Yellow save; grey ball, black band.
+  --
+  -- We cannot see that from here: colorFn is nilled downstream of us (they
+  -- load first at priority 99, so their wrap is inside ours and we only
+  -- ever see the original argument).  So detect it by RESULT instead.
+  -- Across one ball chain, substituting the sheet without our colour pass
+  -- running is a contradiction -- it cannot happen when we are the ones
+  -- painting -- and it is checked at the START of the next chain, when both
+  -- answers are known.  One throw looks wrong, then the band switches off
+  -- for the session and the other mod's own art shows through, which is
+  -- the right outcome: their balls are already coloured.
+  --
+  -- Deliberately not keyed on that mod's id.  Any mod that suppresses the
+  -- anim palette pass produces the same contradiction and gets the same
+  -- answer, including ones written after this.
+  -- ------------------------------------------------------------------
+  local bandSheetUsed, bandColorRan, bandDisabled = false, false, false
+
   local RESOLVERS = {}
   local resolverDead = {}
   local throwCache = {}
@@ -388,6 +416,16 @@ return function(mod)
     self._pbcBall = ball
     activeBattle = self
     throwCache = {}          -- a new throw re-asks every resolver exactly once
+    -- verdict on the chain that just finished (see the note above)
+    if bandSheetUsed and not bandColorRan and not bandDisabled then
+      bandDisabled = true
+      mod.log:warn("banded balls off: another mod is drawing the ball "
+        .. "animation without this mod's palette, so the re-indexed art "
+        .. "would render as grey with a black band")
+      Runtime.reportError("pokeball_colors",
+        "band off: another mod owns ball art")
+    end
+    bandSheetUsed, bandColorRan = false, false
     return vanillaBallChain(self, tossAnim, caught, shakes, ball)
   end
 
@@ -508,6 +546,7 @@ return function(mod)
   -- wrap applies, so the art and the palette can never disagree.
   local function bandColor(ball)
     if not ball then return nil end
+    if bandDisabled then return nil end
     if PaletteFX.mode ~= "redpp" then return nil end
     if not mod.options:get("enabled") then return nil end
     if not mod.options:get("ball_band") then return nil end
@@ -547,7 +586,10 @@ return function(mod)
     if ts == 0 and self._pbcMove and BALL_MOVES[self._pbcMove]
        and bandColor(ballOf(self)) then
       local img = bandSheet(self)
-      if img then return img end
+      if img then
+        bandSheetUsed = true
+        return img
+      end
     end
     return vanillaSheetImage(self, ts)
   end
@@ -602,6 +644,7 @@ return function(mod)
     -- dark shade, so a band that held still through the Master/Ultra
     -- flash is what the hardware does.
     local line = bandColor(ball)
+    bandColorRan = true      -- our palette reached this ball's sprites
     return { accent, body, line and norm(line) or body }
   end
 

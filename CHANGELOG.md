@@ -4,6 +4,16 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.29
+- **Fixed: balls could throw grey with a black band** when another mod
+  supplies its own ball artwork. **Gold & Silver Sprites** is the one this
+  was reported against -- it draws its own coloured Poke Balls, and the two
+  mods were each cancelling the other out.
+- The mod now notices and steps aside, so you get that mod's coloured balls
+  instead. One throw may still look grey before it settles, and the mod
+  manager's [ERRS] screen says why.
+- Nothing changes if you don't have a mod like that installed.
+
 ## 0.1.28
 
 **Updating from 0.1.23?** Everything in 0.1.27's notes below still applies;
