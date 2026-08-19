@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.31"
+  local VERSION = "0.1.32"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -677,21 +677,31 @@ return function(mod)
   AnimPlayer._pbcOriginals.sheetImage = AnimPlayer._pbcOriginals.sheetImage
     or AnimPlayer.sheetImage
   local vanillaSheetImage = AnimPlayer._pbcOriginals.sheetImage
+  -- 0.1.32: the takeover no longer waits to DETECT anything.  "My ball
+  -- colors over other mods" means what it says -- every ball we have a
+  -- colour for is painted by us, from the first throw, whether or not
+  -- another mod is installed and whichever balls it happens to replace.
+  --
+  -- 0.1.30 and 0.1.31 both hung the takeover off conflict detection, and
+  -- both shipped a hole in it: first every bandless ball (PREMIER), then
+  -- the balls that mod ships dedicated art for (POKE, GREAT, ULTRA,
+  -- MASTER).  A switch the player has already thrown should not be
+  -- conditional on us inferring anything.
+  --
+  -- Detection still runs, but only for the OFF case, where the question is
+  -- "should we stand aside" rather than "may we act".
   AnimPlayer.sheetImage = function(self, ts)
-    if ts == 0 and self._pbcMove and BALL_MOVES[self._pbcMove] then
-      if conflictDetected then
-        -- another mod owns the draw.  Defer unless the player said not to.
-        if mod.options:get("enabled") and mod.options:get("ball_art_takeover")
-           and PaletteFX.mode == "redpp" then
-          local ball = ballOf(self)
-          if ball then
-            local img = bakedSheet(self, ball)
-            if img then return img end
-          end
+    if ts == 0 and self._pbcMove and BALL_MOVES[self._pbcMove]
+       and mod.options:get("enabled") and PaletteFX.mode == "redpp" then
+      local ball = ballOf(self)
+      if ball then
+        if mod.options:get("ball_art_takeover") then
+          local img = bakedSheet(self, ball)
+          if img then return img end
+        elseif not conflictDetected and bandColor(ball) then
+          local img = bandSheet(self)
+          if img then return img end
         end
-      elseif bandColor(ballOf(self)) then
-        local img = bandSheet(self)
-        if img then return img end
       end
     end
     return vanillaSheetImage(self, ts)
@@ -746,6 +756,15 @@ return function(mod)
     -- { 3, 0, 3 }, which swaps indices 1 and 2 and leaves index 3 on the
     -- dark shade, so a band that held still through the Master/Ultra
     -- flash is what the hardware does.
+    -- Under takeover the sheet ALREADY carries our colours as real pixels,
+    -- so a palette pass would remap them through the shader's red-channel
+    -- buckets and wreck them -- a baked red body reads as the transparent
+    -- slot.  Returning nil is what tells drawSprites to blit as-is.
+    if mod.options:get("ball_art_takeover") then
+      bandColorRan = true
+      return nil
+    end
+
     local line = bandColor(ball)
     bandColorRan, colorPassEverRan = true, true
     return { accent, body, line and norm(line) or body }

@@ -106,12 +106,15 @@ this mod notices and **steps aside**, so you get their balls and keep every
 other sprite they replace. Nothing to configure.
 
 If you'd rather have *these* colours on the ball, turn on **MY BALL COLORS
-OVER OTHER MODS**. You keep all of that mod's other sprites; only the ball
-changes hands. The trade is that an overridden ball is painted directly, so
-it can't follow the background palette or do the Master/Ultra strobe.
+OVER OTHER MODS**. Every ball this mod has a colour for is then painted by
+it, from the first throw — you keep all of that mod's other sprites, and
+only the ball changes hands. The trade is that an overridden ball is
+painted directly, so it can't follow the background palette or do the
+Master/Ultra strobe.
 
-Either way, one throw may look grey before it settles — the mod only knows
-another mod owns the ball once it has seen a throw go by.
+With the option **off**, the first throw after loading may still show this
+mod's ball before it settles on the other mod's — it only learns another
+mod owns the ball once it has seen a throw go by.
 
 ## Installation
 

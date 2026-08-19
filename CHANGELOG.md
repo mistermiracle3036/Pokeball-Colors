@@ -4,6 +4,16 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.32
+- **MY BALL COLORS OVER OTHER MODS now does exactly what it says**: with it
+  on, *every* ball is coloured by this mod, from the very first throw. The
+  POKe BALL was still being replaced in 0.1.31 -- the option only applied
+  once the mod had worked out another mod was involved, and for the balls
+  that mod ships its own art for, it never did.
+- Turning it on no longer waits for anything, and no longer depends on
+  which balls the other mod happens to replace.
+- With it off, nothing changes: the other mod's ball art wins, as before.
+
 ## 0.1.31
 - **Fixed: MY BALL COLORS OVER OTHER MODS did nothing.** 0.1.30 only
   noticed the clash for balls that have a black band, so any other ball --
