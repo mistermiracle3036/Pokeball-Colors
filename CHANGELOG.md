@@ -4,6 +4,31 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.33
+
+**Updating from 0.1.27?** This release is about playing nicely with mods
+that bring their own Poke Ball artwork.
+
+- **Fixed: balls could throw grey with a black band** alongside a mod that
+  supplies its own ball art -- **Gold & Silver Sprites** is the one this was
+  reported against. The two mods were cancelling each other out and you got
+  neither one's colours.
+- **You now choose which mod colours the ball.** By default the other mod's
+  artwork wins, since it drew those balls deliberately. Turn on **MY BALL
+  COLORS OVER OTHER MODS** and every ball is coloured by this mod instead --
+  including the POKe BALL, and from the very first throw. You keep all of
+  that mod's other sprites either way; only the ball changes hands.
+- With that option on, a ball is painted directly, so it can't follow the
+  background palette or do the MASTER/ULTRA strobe. That's the trade for
+  overriding another mod's artwork.
+- With it off, the first throw after loading may briefly show this mod's
+  ball before settling on the other mod's -- it only learns another mod owns
+  the ball once it has seen a throw go by.
+- The README and FAQ now cover balls whose colour isn't fixed, the heal
+  machine on both games, and why a ball can throw grey on Gold (its own mod
+  hasn't given it a colour -- that's a report for that mod, not this one).
+- Nothing changes if you don't have a mod that replaces ball artwork.
+
 ## 0.1.32
 - **MY BALL COLORS OVER OTHER MODS now does exactly what it says**: with it
   on, *every* ball is coloured by this mod, from the very first throw. The
