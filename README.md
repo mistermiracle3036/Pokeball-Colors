@@ -84,6 +84,7 @@ Open **MODS → POKEBALL COLORS → OPTIONS** (F10 mod manager):
 | ROCKET-COLORED SNAG BALL | ON | Snag Ball throws in black/red instead of its normal colors |
 | COLORED BALLS AT POKeMON CENTER | ON | The heal machine's balls use each mon's caught ball (both games) |
 | BLACK BAND ON THROWN BALLS | ON | The black band along a thrown ball's seam |
+| MY BALL COLORS OVER OTHER MODS | OFF | Win the ball art when another mod supplies its own |
 | DEV: EVERY BALL SOLD IN MARTS | OFF | Every mart stocks every ball in the game |
 
 Every toggle is live — they take effect on your next throw, no restart
@@ -96,6 +97,21 @@ including balls from other mods. Turning it back off restores the normal
 shelves completely — nothing is written to your save, and balls you
 already bought stay in your bag like any other purchase. (The Master
 Ball's price in the ROM is 0, so it rings up free. That's vanilla data.)
+
+### Running alongside a mod that replaces ball artwork
+
+Some sprite packs — **Gold & Silver Sprites**, for one — bring their own
+Poké Ball art and draw it without this mod's colours. When that happens
+this mod notices and **steps aside**, so you get their balls and keep every
+other sprite they replace. Nothing to configure.
+
+If you'd rather have *these* colours on the ball, turn on **MY BALL COLORS
+OVER OTHER MODS**. You keep all of that mod's other sprites; only the ball
+changes hands. The trade is that an overridden ball is painted directly, so
+it can't follow the background palette or do the Master/Ultra strobe.
+
+Either way, one throw may look grey before it settles — the mod only knows
+another mod owns the ball once it has seen a throw go by.
 
 ## Installation
 

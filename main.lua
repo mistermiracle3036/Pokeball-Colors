@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.29"
+  local VERSION = "0.1.30"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -79,6 +79,8 @@ return function(mod)
       label = "Colored balls at POKeMON CENTER", default = true },
     { key = "ball_band", type = "toggle",
       label = "Black band on thrown balls", default = true },
+    { key = "ball_art_takeover", type = "toggle",
+      label = "My ball colors over other mods", default = false },
     { key = "dev_all_balls_in_marts", type = "toggle",
       label = "DEV: every ball sold in marts", default = false },
   })
@@ -296,6 +298,10 @@ return function(mod)
   -- anim palette pass produces the same contradiction and gets the same
   -- answer, including ones written after this.
   -- ------------------------------------------------------------------
+  -- `bandDisabled` means "another mod owns the ball animation and our
+  -- palette never reaches it".  What happens then is the PLAYER'S choice:
+  -- defer (default) and let that mod's own artwork show, or take the ball
+  -- back with "My ball colors over other mods" -- see bakedSheet below.
   local bandSheetUsed, bandColorRan, bandDisabled = false, false, false
 
   local RESOLVERS = {}
@@ -531,6 +537,74 @@ return function(mod)
     return img
   end
 
+  -- ------------------------------------------------------------------
+  -- Taking the ball back, when the player asks for it.
+  --
+  -- The shader route is closed here by construction: the other mod passes
+  -- `colorFn = nil`, so nothing repaints the tiles whatever we return.  So
+  -- do not fight for the shader -- bake the colours into the pixels and
+  -- hand over an image that needs no palette at all.
+  --
+  -- Built from the ENGINE's own generated sheet, never from whatever that
+  -- mod is serving, so the shape is always the vanilla ball and the result
+  -- is deterministic.  Classified by grey value rather than by the
+  -- BAND_TILES coordinate table, because here every ball pixel needs a
+  -- colour, not just the ones that move index.
+  --
+  -- What this loses, and it is worth knowing: a baked ball cannot follow
+  -- the zone palette and cannot strobe, so the MASTER/ULTRA toss flicker
+  -- goes flat.  That is the honest cost of another mod owning the draw,
+  -- and it only applies when the player has asked us to override.
+  -- ------------------------------------------------------------------
+  local bakedCache = {}
+  local function bakedSheet(ap, ball)
+    local entry = resolveEntry(ball, { ball = ball, surface = "battle",
+                                       battle = activeBattle, game = gameRef })
+    if not entry then return nil end
+    local key = table.concat(entry.body, ",") .. "/"
+      .. table.concat(entry.accent, ",") .. "/"
+      .. (entry.line and table.concat(entry.line, ",") or "-")
+    local hit = bakedCache[key]
+    if hit ~= nil then return hit or nil end
+    bakedCache[key] = false
+
+    local sheet = ap and ap.data and ap.data.tilesheets
+                  and ap.data.tilesheets[0]
+    if not (sheet and sheet.path and love and love.image
+            and love.image.newImageData and love.graphics
+            and love.graphics.newImage) then
+      return nil
+    end
+    local ok, img = pcall(function()
+      local id = love.image.newImageData(sheet.path)
+      local cols = math.floor(id:getWidth() / 8)
+      local slot = { entry.accent, entry.body, entry.line or entry.body }
+      for tile in pairs(BAND_TILES) do
+        local tx, ty = (tile % cols) * 8, math.floor(tile / cols) * 8
+        for y = 0, 7 do
+          for x = 0, 7 do
+            local r, _, _, a = id:getPixel(tx + x, ty + y)
+            if a > 0 then
+              -- 170 / 85 / 0 are DMG indices 1 / 2 / 3 (gfx.py GB_SHADES)
+              local index = (r > 0.66 and 1) or (r > 0.16 and 2) or 3
+              local c = slot[index]
+              id:setPixel(tx + x, ty + y,
+                          c[1] / 255, c[2] / 255, c[3] / 255, 1)
+            end
+          end
+        end
+      end
+      return love.graphics.newImage(id)
+    end)
+    if not (ok and img) then
+      bandFail("no ball takeover: could not bake the sheet (%s)",
+               tostring(img))
+      return nil
+    end
+    bakedCache[key] = img
+    return img
+  end
+
   -- The ball a given AnimPlayer is drawing right now.  Toss rows carry
   -- opts.ball; SHAKE_ANIM rows and the resting lockedBall do not, so the
   -- chain's ball covers those.
@@ -583,12 +657,23 @@ return function(mod)
     or AnimPlayer.sheetImage
   local vanillaSheetImage = AnimPlayer._pbcOriginals.sheetImage
   AnimPlayer.sheetImage = function(self, ts)
-    if ts == 0 and self._pbcMove and BALL_MOVES[self._pbcMove]
-       and bandColor(ballOf(self)) then
-      local img = bandSheet(self)
-      if img then
-        bandSheetUsed = true
-        return img
+    if ts == 0 and self._pbcMove and BALL_MOVES[self._pbcMove] then
+      if bandDisabled then
+        -- another mod owns the draw.  Defer unless the player said not to.
+        if mod.options:get("enabled") and mod.options:get("ball_art_takeover")
+           and PaletteFX.mode == "redpp" then
+          local ball = ballOf(self)
+          if ball then
+            local img = bakedSheet(self, ball)
+            if img then return img end
+          end
+        end
+      elseif bandColor(ballOf(self)) then
+        local img = bandSheet(self)
+        if img then
+          bandSheetUsed = true
+          return img
+        end
       end
     end
     return vanillaSheetImage(self, ts)
