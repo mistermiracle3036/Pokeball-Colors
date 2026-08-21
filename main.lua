@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.33"
+  local VERSION = "0.1.34"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -1122,8 +1122,9 @@ return function(mod)
       return name, nil
     end
 
-    World._pbcOriginals = World._pbcOriginals
-      or { drawHealAnim = World.drawHealAnim }
+    World._pbcOriginals = World._pbcOriginals or {}
+    World._pbcOriginals.drawHealAnim = World._pbcOriginals.drawHealAnim
+      or World.drawHealAnim
     local vanillaDrawHeal = World._pbcOriginals.drawHealAnim
     World.drawHealAnim = function(self, ...)
       local ha = self.healAnim
@@ -1170,7 +1171,73 @@ return function(mod)
       if not ok then error(err) end
     end
 
-    mod.log:info("pokeball_colors: Gold heal machine colouring installed")
+    -- Elm's three starter balls share SPRITE_POKE_BALL. Their stable native
+    -- object-event indices distinguish them: 3 Cyndaquil, 4 Totodile, 5
+    -- Chikorita. Bake a native OBJ palette without mutating map data.
+    local elmBallPalette = {
+      [3] = "PAL_OW_RED",
+      [4] = "PAL_OW_BLUE",
+      [5] = "PAL_OW_GREEN",
+    }
+    if okPal and Palettes
+       and type(World.applySpritePalette) == "function" then
+      World._pbcOriginals.applySpritePalette =
+        World._pbcOriginals.applySpritePalette or World.applySpritePalette
+      local vanillaApplySpritePalette = World._pbcOriginals.applySpritePalette
+      World.applySpritePalette = function(self, entity)
+        local map = self.map
+        local def = entity and entity.def
+        local paletteName = map and map.id == "ELMS_LAB"
+          and def and def.sprite == "SPRITE_POKE_BALL"
+          and elmBallPalette[def.index]
+        if mod.options:get("enabled") and paletteName
+           and self.palettes and entity.sprite then
+          local daytime = self.daytime or "DAY"
+          local set = Palettes.objectSet(self.palettes, daytime)
+          local slot = Palettes.OW_PALETTE_ID[paletteName]
+          local colors = set and slot and set[slot]
+          if colors then
+            entity.sprite:setObjPalette(colors,
+              ("pbc:elm:%s:%s"):format(daytime, paletteName))
+            return
+          end
+        end
+        return vanillaApplySpritePalette(self, entity)
+      end
+    else
+      Runtime.reportError("pokeball_colors",
+        "Gold starters: overworld palette seam missing")
+    end
+
+    -- Vanilla `_CGB_Pokepic` deliberately uses the map's grey ramp. Limit
+    -- the colour exception to Elm's three starter previews, using each
+    -- species' own native Gold palette.
+    local elmStarter = {
+      CYNDAQUIL = true,
+      TOTODILE = true,
+      CHIKORITA = true,
+    }
+    if okPal and Palettes and type(Palettes.monColors) == "function"
+       and type(World.showPokePic) == "function" then
+      World._pbcOriginals.showPokePic = World._pbcOriginals.showPokePic
+        or World.showPokePic
+      local vanillaShowPokePic = World._pbcOriginals.showPokePic
+      World.showPokePic = function(self, speciesIndex)
+        vanillaShowPokePic(self, speciesIndex)
+        local map = self.map
+        local id = self.pokePicName
+        if mod.options:get("enabled") and map and map.id == "ELMS_LAB"
+           and elmStarter[id] then
+          self.pokePicColors = Palettes.monColors(self.palettes, id, false)
+            or self.pokePicColors
+        end
+      end
+    else
+      Runtime.reportError("pokeball_colors",
+        "Gold starters: preview palette seam missing")
+    end
+
+    mod.log:info("pokeball_colors: Gold colouring installed")
   end
 
   -- Capability, not a version name: gen2Palettes existing IS the Gen 2
