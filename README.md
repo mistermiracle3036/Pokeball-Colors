@@ -45,9 +45,9 @@ changed by this mod.
 ## What gets colored
 
 On Gold, Elm's starter balls are red for Cyndaquil, blue for Totodile, and
-green for Chikorita. Inspecting one also shows that starter in its native
-Pokemon colours instead of grey. This is limited to Elm's introductory
-starter choice.
+green for Chikorita. Pokemon preview pictures also use each species' native
+colours instead of grey, including starter choices added by **Trainer
+Journey**.
 
 | Ball | Look |
 | ---- | ---- |

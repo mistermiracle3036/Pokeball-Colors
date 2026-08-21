@@ -4,17 +4,18 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
-## 0.1.34
+## 0.1.35
 
-**Updating from 0.1.33?** Elm's starter display now has colour on Gold.
+**Updating from 0.1.33?** Gold's Pokemon preview pictures now have colour,
+and Elm's starter balls are colour-coded.
 
 - Elm's three starter balls are colour-coded in the lab: **red for
   Cyndaquil, blue for Totodile, and green for Chikorita**.
-- The Cyndaquil, Totodile, and Chikorita pictures shown when you inspect
-  their balls now use their native Pokemon colours instead of grey.
-- These changes are limited to Elm's starter choice and follow the existing
-  **COLORED BALLS** master option. Other overworld Poke Balls and Pokemon
-  pictures are unchanged.
+- Pokemon pictures opened by Gold's preview window now use that Pokemon's
+  native colours instead of grey. This includes Elm's three starters and
+  starter choices added by **Trainer Journey**.
+- Both changes follow the existing **COLORED BALLS** master option. Other
+  overworld Poke Balls are unchanged.
 
 ## 0.1.33
 

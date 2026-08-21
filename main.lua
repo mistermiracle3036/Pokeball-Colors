@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.34"
+  local VERSION = "0.1.35"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -1209,14 +1209,10 @@ return function(mod)
         "Gold starters: overworld palette seam missing")
     end
 
-    -- Vanilla `_CGB_Pokepic` deliberately uses the map's grey ramp. Limit
-    -- the colour exception to Elm's three starter previews, using each
-    -- species' own native Gold palette.
-    local elmStarter = {
-      CYNDAQUIL = true,
-      TOTODILE = true,
-      CHIKORITA = true,
-    }
+    -- Vanilla `_CGB_Pokepic` deliberately uses the map's grey ramp. Give
+    -- every Gold pokepic its species' native palette instead. This keeps
+    -- mod-authored starter selectors (Trainer Journey is the first) from
+    -- needing a hard-coded species list or a dependency on this mod.
     if okPal and Palettes and type(Palettes.monColors) == "function"
        and type(World.showPokePic) == "function" then
       World._pbcOriginals.showPokePic = World._pbcOriginals.showPokePic
@@ -1224,10 +1220,8 @@ return function(mod)
       local vanillaShowPokePic = World._pbcOriginals.showPokePic
       World.showPokePic = function(self, speciesIndex)
         vanillaShowPokePic(self, speciesIndex)
-        local map = self.map
         local id = self.pokePicName
-        if mod.options:get("enabled") and map and map.id == "ELMS_LAB"
-           and elmStarter[id] then
+        if mod.options:get("enabled") and id then
           self.pokePicColors = Palettes.monColors(self.palettes, id, false)
             or self.pokePicColors
         end
