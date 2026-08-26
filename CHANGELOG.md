@@ -4,6 +4,25 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.36
+
+**Updating from 0.1.33?** A new look for the ULTRA BALL, plus the Gold
+colour work from 0.1.34/0.1.35 below.
+
+- **The ULTRA BALL is two shades of gold with a black outline**, instead of
+  gold over a black lower half. It reads as one ball now: its throw strobe
+  shimmers between the two golds rather than blinking gold/black.
+- Mod authors: a colour entry takes **`outline = {r,g,b}`** alongside the
+  existing `line`. `line` paints the seam band, `outline` paints the rim --
+  same third colour slot, different part of the ball. Either is optional.
+- Elm's three starter balls are colour-coded in the lab: **red for
+  Cyndaquil, blue for Totodile, and green for Chikorita**.
+- Pokemon pictures opened by Gold's preview window now use that Pokemon's
+  native colours instead of grey. This includes Elm's three starters and
+  starter choices added by **Trainer Journey**.
+- All of it follows the existing **COLORED BALLS** master option, and the
+  band/outline follows **BLACK BAND/OUTLINE ON BALLS**.
+
 ## 0.1.35
 
 **Updating from 0.1.33?** Gold's Pokemon preview pictures now have colour,

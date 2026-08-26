@@ -53,7 +53,7 @@ Journey**.
 | ---- | ---- |
 | Poké Ball | Red with a pale highlight, black band |
 | Great Ball | Blue with a pale highlight, black band |
-| Ultra Ball | Gold with a black lower half |
+| Ultra Ball | Two shades of gold with a black outline |
 | Master Ball | Purple with a pale highlight, black band |
 | Safari Ball | Olive green with a black band |
 | Quick Ball *(Custom Poké Balls)* | Yellow with deep blue |
@@ -88,7 +88,7 @@ Open **MODS → POKEBALL COLORS → OPTIONS** (F10 mod manager):
 | COLORED BALLS (ADVANCED MODE) | ON | Master switch for all ball coloring |
 | ROCKET-COLORED SNAG BALL | ON | Snag Ball throws in black/red instead of its normal colors |
 | COLORED BALLS AT POKeMON CENTER | ON | The heal machine's balls use each mon's caught ball (both games) |
-| BLACK BAND ON THROWN BALLS | ON | The black band along a thrown ball's seam |
+| BLACK BAND/OUTLINE ON BALLS | ON | The third colour on a ball — its seam band or its rim |
 | MY BALL COLORS OVER OTHER MODS | OFF | Win the ball art when another mod supplies its own |
 | DEV: EVERY BALL SOLD IN MARTS | OFF | Every mart stocks every ball in the game |
 
@@ -215,8 +215,19 @@ heard of the key ignores it rather than rejecting your registration.
 Never a hard dependency, and never a reason to bump a version floor.
 
 A band needs somewhere to read: if your ball's `accent` is already dark,
-a black `line` will merge into it and show nothing. That is why the
-native ULTRA BALL has no band.
+a black `line` will merge into it and show nothing.
+
+`outline` is the same third colour on a different region — the ball's rim
+rather than its seam:
+
+```lua
+MY_BALL = { body = {...}, accent = {...}, outline = { 0, 0, 0 } }
+```
+
+Use `line` for a Poké-Ball-style band across the middle, `outline` for a
+dark rim around the edge. Set one or the other; if you set both, `line`
+wins. The native ULTRA BALL uses `outline` — two shades of gold with a
+black rim — which is why its throw shimmers rather than blinking.
 
 ### Balls whose colour is not fixed
 

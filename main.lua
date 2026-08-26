@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.35"
+  local VERSION = "0.1.36"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -78,7 +78,7 @@ return function(mod)
     { key = "center_balls", type = "toggle",
       label = "Colored balls at POKeMON CENTER", default = true },
     { key = "ball_band", type = "toggle",
-      label = "Black band on thrown balls", default = true },
+      label = "Black band/outline on balls", default = true },
     { key = "ball_art_takeover", type = "toggle",
       label = "My ball colors over other mods", default = false },
     { key = "dev_all_balls_in_marts", type = "toggle",
@@ -113,9 +113,12 @@ return function(mod)
   -- whose series art has a visible black band AND whose own two colors
   -- leave room for it to read.
   --
-  -- ULTRA_BALL is deliberately left without one: its accent is already
-  -- { 40, 40, 40 }, so a black band would sit against a near-black
-  -- crescent and read as nothing.  The nine custom_pokeballs entries are
+  -- ULTRA_BALL takes the OTHER flavour, `outline` (0.1.36).  It used to be
+  -- gold over a near-black crescent, which meant its toss strobe read as
+  -- gold-ball/black-ball rather than as one ball flickering.  Two yellows
+  -- with a black rim keeps it unmistakably an Ultra Ball, turns the strobe
+  -- into a shimmer between the two golds, and puts the black where the
+  -- sprite already has a region for it.  The nine custom_pokeballs entries are
   -- likewise left alone -- those colors were sampled from that mod's own
   -- art and this mod has no basis to invent a band for someone else's
   -- ball.  Their author (and Too Many Balls, mod id kanto_balls, for
@@ -127,7 +130,8 @@ return function(mod)
                     line = BLACK },
     GREAT_BALL  = { body = {  56, 112, 216 }, accent = { 208, 224, 248 },
                     line = BLACK },
-    ULTRA_BALL  = { body = { 232, 192,  40 }, accent = {  40,  40,  40 } },
+    ULTRA_BALL  = { body = { 248, 208,  64 }, accent = { 176, 120,  16 },
+                    outline = BLACK },
     MASTER_BALL = { body = { 152,  72, 200 }, accent = { 232, 200, 248 },
                     line = BLACK },
     SAFARI_BALL = { body = { 112, 160,  72 }, accent = { 224, 232, 200 },
@@ -210,11 +214,13 @@ return function(mod)
       end
     end
     -- optional keys: validated only when present, never required
-    local line = c.line
-    if line ~= nil then
-      if type(line) ~= "table" or #line < 3 then return false end
-      for i = 1, 3 do
-        if type(line[i]) ~= "number" then return false end
+    for _, k in ipairs({ "line", "outline" }) do
+      local v = c[k]
+      if v ~= nil then
+        if type(v) ~= "table" or #v < 3 then return false end
+        for i = 1, 3 do
+          if type(v[i]) ~= "number" then return false end
+        end
       end
     end
     return true
@@ -596,7 +602,11 @@ return function(mod)
     local ok, img = pcall(function()
       local id = love.image.newImageData(sheet.path)
       local cols = math.floor(id:getWidth() / 8)
-      local slot = { entry.accent, entry.body, entry.line or entry.body }
+      -- baked art is built from the VANILLA sheet, where index 3 is the
+      -- outline ring -- so a `line` ball's band cannot appear here and its
+      -- colour lands on the rim instead.  An `outline` ball is exact.
+      local slot = { entry.accent, entry.body,
+                     entry.line or entry.outline or entry.body }
       for tile in pairs(BAND_TILES) do
         local tx, ty = (tile % cols) * 8, math.floor(tile / cols) * 8
         for y = 0, 7 do
@@ -636,6 +646,38 @@ return function(mod)
 
   -- Does this ball render with a band right now?  Every gate the color
   -- wrap applies, so the art and the palette can never disagree.
+  -- ------------------------------------------------------------------
+  -- The third colour comes in two flavours, because the vanilla art and
+  -- the re-indexed art put different REGIONS on DMG index 3:
+  --
+  --   `outline` -- the perimeter ring, which is what index 3 already is on
+  --                the untouched sheet.  No art swap, so it composes with
+  --                everything and costs nothing.
+  --   `line`    -- the seam band between the two halves.  Those pixels are
+  --                index 2 on the vanilla sheet, so this one needs the
+  --                re-indexed art (see BAND_TILES) and is the only reason
+  --                that sheet exists.
+  --
+  -- Both land in slot 3; they differ only in which sheet is served.  A ball
+  -- may set either.  If it sets both, `line` wins -- the band is the more
+  -- specific request, and the outline then keeps the body colour as it did
+  -- before either key existed.
+  -- ------------------------------------------------------------------
+  local function thirdColor(ball)
+    if not ball then return nil end
+    if PaletteFX.mode ~= "redpp" then return nil end
+    if not mod.options:get("enabled") then return nil end
+    if not mod.options:get("ball_band") then return nil end
+    if ball == "SNAG_BALL" and not mod.options:get("snag_ball_color") then
+      return nil
+    end
+    local c = resolveEntry(ball, { ball = ball, surface = "battle",
+                                   battle = activeBattle, game = gameRef })
+    if not c then return nil end
+    return c.line or c.outline
+  end
+
+  -- Does this ball need the RE-INDEXED sheet?  Only a `line` does.
   local function bandColor(ball)
     if not ball then return nil end
     if conflictDetected then return nil end
@@ -765,9 +807,9 @@ return function(mod)
       return nil
     end
 
-    local line = bandColor(ball)
+    local third = thirdColor(ball)
     bandColorRan, colorPassEverRan = true, true
-    return { accent, body, line and norm(line) or body }
+    return { accent, body, third and norm(third) or body }
   end
 
   -- ------------------------------------------------------------------
