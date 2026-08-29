@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.52"
+  local VERSION = "0.1.53"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -563,58 +563,64 @@ return function(mod)
   -- needs to restate it.  Ids absent when that mod is not installed simply
   -- never match -- presetsForBall falls to the generic list.
   local TMB_PRESETS = {
-    PREMIER_BALL  = { { "IVORY", {248,248,248}, {216,216,216}, {24,24,24} },
+    -- ALTERNATES ONLY.  0.1.49 gave each of these balls a first preset named
+    -- after the ball and derived from Too Many Balls' own palette row, so it
+    -- sat next to ORIGINAL looking like a second copy of it -- and on ORIGIN
+    -- BALL the two rows literally read ORIGIN and ORIGINAL.  The ball's own
+    -- colour IS ORIGINAL and nothing here restates it: every row below is a
+    -- genuine departure, and none is named after its ball.
+    PREMIER_BALL  = { { "ONYX", {56,56,64}, {200,200,208}, {16,16,16} },
+                      { "CORAL", {240,120,96}, {248,216,200}, {96,32,24} } },
+    NEST_BALL     = { { "AMBER", {216,160,48}, {248,224,152}, {72,48,8} },
+                      { "COBALT", {40,80,192}, {176,208,248}, {8,24,72} } },
+    HEAL_BALL     = { { "MINT", {120,216,184}, {224,248,240}, {24,80,64} },
+                      { "PLUM", {120,64,136}, {232,208,240}, {40,16,48} } },
+    MIRROR_BALL   = { { "PRISM", {136,168,232}, {232,216,248}, {40,40,88} },
+                      { "COPPER", {192,112,56}, {240,208,168}, {72,32,8} } },
+    SILPH_BALL    = { { "NEON", {64,224,208}, {248,120,200}, {16,48,56} },
+                      { "SLATE", {96,104,120}, {208,216,228}, {24,28,40} } },
+    SNARE_BALL    = { { "BRIAR", {104,80,56}, {200,184,128}, {32,24,16} },
+                      { "CITRUS", {216,208,64}, {248,248,192}, {88,80,8} } },
+    CATALYST_BALL = { { "EMBER", {224,96,48}, {248,200,120}, {72,24,8} },
+                      { "JADE", {48,160,120}, {200,240,220}, {8,56,40} } },
+    DRIFT_BALL    = { { "STORM", {88,104,136}, {200,216,240}, {24,32,48} },
+                      { "PEACH", {248,176,136}, {248,232,216}, {112,56,32} } },
+    KECLEON_BALL  = { { "CITRUS", {216,208,64}, {248,248,192}, {88,80,8} },
+                      { "COBALT", {40,80,192}, {176,208,248}, {8,24,72} } },
+    CRADLE_BALL   = { { "DAWN", {248,192,152}, {248,232,216}, {96,56,40} },
+                      { "MIDNITE", {40,40,56}, {168,176,216}, {8,8,16} } },
+    ACE_BALL      = { { "TROPHY", {216,176,64}, {248,232,176}, {72,56,16} },
+                      { "JADE", {48,160,120}, {200,240,220}, {8,56,40} } },
+    LUXURY_BALL   = { { "VELVET", {96,32,56}, {232,184,120}, {32,8,16} },
+                      { "IVORY", {240,236,224}, {200,192,168}, {56,52,40} } },
+    CHERISH_BALL  = { { "ROSE", {232,128,160}, {248,216,224}, {88,24,48} },
+                      { "SNOW", {236,240,248}, {184,200,224}, {56,64,80} } },
+    CAGE_BALL     = { { "RUST", {152,88,48}, {216,168,112}, {48,24,8} },
+                      { "MOSS", {80,136,72}, {200,232,176}, {16,48,24} } },
+    CRYSTAL_BALL  = { { "FROST", {120,184,224}, {232,244,252}, {24,48,72} },
+                      { "AMETHYS", {152,104,200}, {232,208,248}, {48,24,72} } },
+    STRANGE_BALL  = { { "VOID", {40,32,64}, {136,120,200}, {8,8,24} },
+                      { "CORAL", {240,120,96}, {248,216,200}, {96,32,24} } },
+    ORIGIN_BALL   = { { "RELIC", {168,144,96}, {232,216,176}, {56,40,24} },
                       { "ONYX", {56,56,64}, {200,200,208}, {16,16,16} } },
-    NEST_BALL     = { { "MOSS", {80,200,128}, {140,230,170}, {16,64,40} },
-                      { "AMBER", {216,160,48}, {248,224,152}, {72,48,8} } },
-    HEAL_BALL     = { { "BLOSSOM", {232,160,196}, {248,238,244}, {96,32,64} },
-                      { "MINT", {120,216,184}, {224,248,240}, {24,80,64} } },
-    MIRROR_BALL   = { { "SILVER", {168,180,200}, {244,250,255}, {48,56,72} },
-                      { "PRISM", {136,168,232}, {232,216,248}, {40,40,88} } },
-    SILPH_BALL    = { { "SILPH", {120,88,168}, {96,216,200}, {32,24,56} },
-                      { "NEON", {64,224,208}, {248,120,200}, {16,48,56} } },
-    SNARE_BALL    = { { "SNARE", {56,104,72}, {224,216,176}, {16,32,24} },
-                      { "BRIAR", {104,80,56}, {200,184,128}, {32,24,16} } },
-    CATALYST_BALL = { { "PLASMA", {200,72,208}, {236,168,244}, {56,16,64} },
-                      { "EMBER", {224,96,48}, {248,200,120}, {72,24,8} } },
-    DRIFT_BALL    = { { "DRIFT", {152,200,232}, {248,250,252}, {40,64,88} },
-                      { "STORM", {88,104,136}, {200,216,240}, {24,32,48} } },
-    KECLEON_BALL  = { { "MIMIC", {72,168,96}, {216,72,88}, {16,48,24} },
-                      { "JUNGLE", {40,120,64}, {184,216,120}, {8,32,16} } },
-    CRADLE_BALL   = { { "CRADLE", {184,168,216}, {248,232,200}, {56,48,80} },
-                      { "DAWN", {248,192,152}, {248,232,216}, {96,56,40} } },
-    ACE_BALL      = { { "ACE", {56,88,176}, {240,192,64}, {16,24,56} },
-                      { "TROPHY", {216,176,64}, {248,232,176}, {72,56,16} } },
-    LUXURY_BALL   = { { "LUXURY", {32,32,40}, {232,192,64}, {0,0,0} },
-                      { "VELVET", {96,32,56}, {232,184,120}, {32,8,16} } },
-    CHERISH_BALL  = { { "CHERISH", {224,48,56}, {248,128,128}, {72,8,16} },
-                      { "ROSE", {232,128,160}, {248,216,224}, {88,24,48} } },
-    CAGE_BALL     = { { "CAGE", {48,56,72}, {72,208,224}, {16,16,24} },
-                      { "RUST", {152,88,48}, {216,168,112}, {48,24,8} } },
-    CRYSTAL_BALL  = { { "CRYSTAL", {176,224,248}, {248,252,255}, {40,72,96} },
-                      { "FROST", {120,184,224}, {232,244,252}, {24,48,72} } },
-    STRANGE_BALL  = { { "STRANGE", {48,152,152}, {160,224,176}, {8,40,40} },
-                      { "VOID", {40,32,64}, {136,120,200}, {8,8,24} } },
-    ORIGIN_BALL   = { { "ORIGIN", {208,48,48}, {240,192,64}, {64,8,8} },
-                      { "RELIC", {168,144,96}, {232,216,176}, {56,40,24} } },
-    BEAST_BALL    = { { "BEAST", {16,24,56}, {244,216,72}, {0,0,16} },
-                      { "AETHER", {224,232,240}, {120,200,216}, {40,56,72} } },
-    GS_BALL       = { { "GS", {224,168,32}, {232,236,240}, {72,48,8} },
-                      { "ANTIQUE", {168,136,64}, {224,208,160}, {48,32,8} } },
-    QUICK_BALL    = { { "QUICK", {64,160,224}, {240,208,72}, {16,40,72} },
-                      { "SPARK", {248,232,96}, {248,248,216}, {96,72,8} } },
-    TIMER_BALL    = { { "TIMER", {232,232,232}, {216,64,64}, {32,32,32} },
-                      { "MIDNITE", {40,40,56}, {216,64,64}, {8,8,16} } },
-    NET_BALL      = { { "NET", {48,152,168}, {184,232,240}, {8,48,56} },
-                      { "REEF", {64,184,144}, {240,232,168}, {16,56,48} } },
-    DUSK_BALL     = { { "DUSK", {64,56,72}, {208,128,48}, {16,8,24} },
-                      { "TWILITE", {88,72,136}, {232,176,96}, {24,16,48} } },
-    REPEAT_BALL   = { { "REPEAT", {224,168,48}, {248,224,168}, {72,40,8} },
-                      { "ECHO", {160,120,200}, {232,216,248}, {48,24,72} } },
-    DREAM_BALL    = { { "DREAM", {200,152,216}, {248,224,240}, {64,40,80} },
-                      { "LULLABY", {136,168,216}, {240,240,248}, {32,48,80} } },
-    DIVE_BALL     = { { "DIVE", {32,120,184}, {168,224,240}, {8,32,64} },
-                      { "ABYSS", {16,40,88}, {80,168,200}, {0,8,24} } },
+    BEAST_BALL    = { { "AETHER", {224,232,240}, {120,200,216}, {40,56,72} },
+                      { "CORAL", {240,120,96}, {248,216,200}, {96,32,24} } },
+    GS_BALL       = { { "ANTIQUE", {168,136,64}, {224,208,160}, {48,32,8} },
+                      { "JADE", {48,160,120}, {200,240,220}, {8,56,40} } },
+    QUICK_BALL    = { { "SPARK", {248,232,96}, {248,248,216}, {96,72,8} },
+                      { "SLATE", {96,104,120}, {208,216,228}, {24,28,40} } },
+    TIMER_BALL    = { { "MIDNITE", {40,40,56}, {216,64,64}, {8,8,16} },
+                      { "SAND", {216,192,136}, {248,240,216}, {88,72,32} } },
+    NET_BALL      = { { "REEF", {64,184,144}, {240,232,168}, {16,56,48} },
+                      { "SUNSET", {232,128,72}, {248,208,152}, {88,32,16} } },
+    DUSK_BALL     = { { "TWILITE", {88,72,136}, {232,176,96}, {24,16,48} },
+                      { "ASH", {136,136,144}, {232,232,236}, {40,40,48} } },
+    REPEAT_BALL   = { { "ECHO", {160,120,200}, {232,216,248}, {48,24,72} },
+                      { "MOSS", {80,136,72}, {200,232,176}, {16,48,24} } },
+    DREAM_BALL    = { { "LULLABY", {136,168,216}, {240,240,248}, {32,48,80} },
+                      { "PEACH", {248,176,136}, {248,232,216}, {112,56,32} } },
+    DIVE_BALL     = { { "ABYSS", {16,40,88}, {80,168,200}, {0,8,24} },
+                      { "LAGOON", {56,184,192}, {208,244,248}, {8,64,72} } },
   }
 
   -- The Gold-family palette a ball's throw ACTUALLY resolves to, or nil.
@@ -676,8 +682,20 @@ return function(mod)
                accent = rgbCopy(own.accent),
                third = rgbCopy(own.outline), style = "outline" }
     end
-    -- No native answer: Gen 1, or a ball whose mod registered no palette.
-    if TMB_PRESETS[id] then return fromRow(TMB_PRESETS[id][1]) end
+    -- No native answer -- a Gen 1 boot, or a ball whose mod registered no
+    -- Gold palette.  resolveEntry is the Gen 1 counterpart of goldSeed: it
+    -- reads COLORS, which is where another mod's registerColors lands, so a
+    -- mod ball still defaults to its author's colour.  TMB_PRESETS is NOT a
+    -- fallback -- since 0.1.53 it holds alternates only, and defaulting to
+    -- one would hand the player a colourway nobody chose.
+    local mine = resolveEntry(id, { ball = id, surface = "editor",
+                                    game = gameRef })
+    if mine and mine.body and mine.accent then
+      return { name = "ORIGINAL", body = rgbCopy(mine.body),
+               accent = rgbCopy(mine.accent),
+               third = rgbCopy(mine.line or mine.outline or mine.body),
+               style = mine.line and "line" or "outline" }
+    end
     local g = GENERIC_PRESETS[1]
     return { name = g.name, body = rgbCopy(g.body), accent = rgbCopy(g.accent),
              third = rgbCopy(g.third), style = g.style }
@@ -855,6 +873,7 @@ return function(mod)
       local ball, working
       local presetIndex = 1
       local presets = GENERIC_PRESETS
+      local restoredAll = false      -- one-shot confirmation on the list
       local rgbPart, rgbChannel, rgbStep = "body", 1, 8
       local self = { game = game, isOpaque = true, isModOptions = true }
 
@@ -938,14 +957,30 @@ return function(mod)
         local input = game and game.input
         if not input then return end
         if mode == "list" then
+          local last = #balls + 1        -- the RESTORE ALL row
+          if input:wasPressed("up") or input:wasPressed("down")
+             or input:wasPressed("b") then
+            restoredAll = false
+          end
           if input:wasPressed("up") and #balls > 0 then
-            selected = selected > 1 and selected - 1 or #balls
+            selected = selected > 1 and selected - 1 or last
             ensureVisible()
           elseif input:wasPressed("down") and #balls > 0 then
-            selected = selected < #balls and selected + 1 or 1
+            selected = selected < last and selected + 1 or 1
             ensureVisible()
           elseif input:wasPressed("a") then
-            beginEdit()
+            if selected > #balls then
+              -- RESTORE ALL: the RESTORE DEFAULT row applied to every ball
+              -- in the list at once.  Clearing, for the reason given there:
+              -- a cart ball then takes this mod's colourway and a mod-added
+              -- ball its author's, with nothing pinned.
+              for _, item in ipairs(balls) do
+                clearSavedEntry(item.id)
+              end
+              restoredAll = true
+            else
+              beginEdit()
+            end
           elseif input:wasPressed("b") then
             game.stack:pop()
           end
@@ -1010,14 +1045,16 @@ return function(mod)
             rgbPart = kind:lower()
             rgbChannel, mode = 1, "rgb"
           elseif kind == "RESTORE DEFAULT" then
-            -- WRITES this mod's colourway rather than clearing the override.
-            -- Clearing would hand the ball back to the game untouched, which
-            -- on Gold means its cart colours -- not what "restore Pokeball
-            -- Colors' default" should mean.  On Gen 2 it has to be written
-            -- to take effect at all: with no saved entry customGoldPalette
-            -- returns nil and the cart palette stands.
-            working = defaultPreset(ball.id)
-            persistWorking(ball.id, working)
+            -- CLEARING is the whole operation now.  0.1.51 wrote this mod's
+            -- colourway instead, because back then clearing on Gold handed
+            -- the ball to the cart palette.  0.1.52 removed that reason: with
+            -- nothing saved, customGoldPalette already asserts our colourway
+            -- for a cart ball and stays out of the way for a mod-added one.
+            -- So clearing now means exactly "this mod's default" on both
+            -- generations -- and, unlike a written entry, it does not PIN a
+            -- mod ball's colour where that mod could later retune it.
+            clearSavedEntry(ball.id)
+            working = editableEntry(ball.id)
             presetIndex = matchingPreset(working, presets)
           elseif kind == "DONE" then
             mode = "list"
@@ -1186,11 +1223,15 @@ return function(mod)
           end
           for row = 1, VISIBLE_EDITOR_ROWS do
             local i, item = scroll + row, balls[scroll + row]
+            local y = 24 + (row - 1) * 8
             if item then
-              local y = 24 + (row - 1) * 8
               if i == selected then Font.drawCode(Theme.cursor, 8, y) end
               Font.draw(label(item.label, 12), 16, y)
               if savedOverrides()[item.id] then Font.draw("*", 112, y) end
+            elseif i == #balls + 1 then
+              -- the RESTORE ALL row, last in the list
+              if i == selected then Font.drawCode(Theme.cursor, 8, y) end
+              Font.draw("RESTORE ALL", 16, y)
             end
           end
           -- More-below marker, the way Trainer Journey marks its scrolling
@@ -1198,12 +1239,16 @@ return function(mod)
           -- the same tile on both generations -- one of only three arrows
           -- that actually exist (see the note by drawLeftArrow).  The ball
           -- list scrolls and had nothing saying so.
-          if scroll + VISIBLE_EDITOR_ROWS < #balls then
+          if scroll + VISIBLE_EDITOR_ROWS < #balls + 1 then
             Font.drawCode(Theme.moreArrow or 0x7e, 136,
               24 + (VISIBLE_EDITOR_ROWS - 1) * 8)
           end
-          Font.draw("A: EDIT", 16, 120)
-          Font.draw("B: EXIT", 88, 120)
+          if restoredAll then
+            Font.draw("ALL RESTORED", 16, 120)
+          else
+            Font.draw("A: EDIT", 16, 120)
+            Font.draw("B: EXIT", 88, 120)
+          end
         elseif mode == "edit" then
           Font.draw(label(ball and ball.label, 18), 8, 8)
           local rows = editRows()

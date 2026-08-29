@@ -4,6 +4,22 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.53
+
+**Updating from 0.1.33?** You can redesign every Poke Ball from the in-game
+PC, in Red, Blue and Yellow with Advanced colours on and in Gold, Silver and
+Crystal. This release also includes the Ultra Ball redesign, the Elm starter
+display, and coloured Pokemon previews added in the intervening test builds.
+
+- **RESTORE ALL**, at the bottom of the ball list, puts every ball back to its
+  default in one go.
+- **Balls added by other mods no longer offer a preset named after the ball
+  itself.** It sat next to ORIGINAL looking like a copy of it -- and on the
+  Origin Ball the two choices read ORIGIN and ORIGINAL. Each of those balls
+  now offers two genuinely different colourways instead, with its own colour
+  still available as ORIGINAL.
+- Everything from 0.1.52 below still applies.
+
 ## 0.1.52
 
 **Updating from 0.1.33?** You can redesign every Poke Ball from the in-game
