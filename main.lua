@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.51"
+  local VERSION = "0.1.52"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -81,6 +81,8 @@ return function(mod)
       label = "Black band/outline on balls", default = true },
     { key = "ball_art_takeover", type = "toggle",
       label = "My ball colors over other mods", default = false },
+    { key = "gen2_recolor", type = "toggle",
+      label = "Recolor balls in GOLD family", default = true },
     { key = "editor_mod_balls", type = "toggle",
       label = "Show mod balls in color editor", default = true },
     { key = "dev_all_balls_in_marts", type = "toggle",
@@ -105,6 +107,13 @@ return function(mod)
   local activeBattle      -- the BattleState whose ball chain is running
   local gameRef           -- the live game, from game.ready
   local goldPinFor        -- Gold only: fn(ball, mon, battle) -> name, row
+  local goldBallPaletteBase -- Gold: BattleState.ballPalette as it was BEFORE
+                          -- this mod wrapped it, recorded by
+                          -- installGoldCenter.  Kept here rather than read
+                          -- back off the engine table so goldSeed never has
+                          -- to index an engine module as a value (gen2check
+                          -- degrades that to an `unresolved:` note, which
+                          -- would hide the next real finding at the site).
   local previewBallArt    -- fn(game, entry) -> Image of the REAL ball, or nil
                           -- (defined below BAND_TILES, whose seam coordinates
                           -- it reuses; the editor screen is registered above
@@ -618,9 +627,18 @@ return function(mod)
     -- condition made `name` always nil, every lookup miss, and every ball
     -- open on the red POKE_BALL fallback until the player cycled a preset.
     -- The engine documents the same trap at BattleAnimView.lua:57.
+    -- Deliberately the chain from BENEATH our own wrap.  Since 0.1.52 that
+    -- wrap answers with this mod's colour for an un-customised cart ball, so
+    -- asking it here would make ORIGINAL report our colour as the ball's own
+    -- -- the one thing it must never do.  goldBallPaletteBase is what was
+    -- installed before us: Too Many Balls' wrap when that mod is present,
+    -- the cart's own table otherwise.
     local name
-    if okBS and type(BS2) == "table"
-       and type(BS2.ballPalette) == "function" then
+    if goldBallPaletteBase then
+      local okName, res = pcall(goldBallPaletteBase, {}, id)
+      if okName and type(res) == "string" then name = res end
+    elseif okBS and type(BS2) == "table"
+           and type(BS2.ballPalette) == "function" then
       local okName, res = pcall(BS2.ballPalette, {}, id)
       if okName and type(res) == "string" then name = res end
     end
@@ -639,22 +657,47 @@ return function(mod)
   -- the mod is its palette, so its palette is the baseline.  A ball nothing
   -- covers falls to what the game draws, then to the generic list, rather
   -- than being asserted as red.
+  local function fromRow(row)
+    return { name = row[1], body = rgbCopy(row[2]), accent = rgbCopy(row[3]),
+             third = rgbCopy(row[4]), style = row[5] or "outline" }
+  end
+
   local function defaultPreset(id)
-    local rows = BALL_PRESETS[id] or TMB_PRESETS[id]
-    local row = rows and rows[1]
-    if row then
-      return { name = row[1], body = rgbCopy(row[2]), accent = rgbCopy(row[3]),
-               third = rgbCopy(row[4]), style = row[5] or "outline" }
+    -- The CART's own balls are this mod's to dress: its colourway is their
+    -- default.  A ball another mod ADDED is that mod's, and its default stays
+    -- whatever its author registered -- developer's call, and the same
+    -- ownership line the Gen 2 note below draws.  Too Many Balls' rows reach
+    -- us through goldSeed, so "whatever TMB says" needs no coordination and
+    -- no second copy of their table.
+    if BALL_PRESETS[id] then return fromRow(BALL_PRESETS[id][1]) end
+    local own = goldSeed(id)
+    if own then
+      return { name = "ORIGINAL", body = rgbCopy(own.body),
+               accent = rgbCopy(own.accent),
+               third = rgbCopy(own.outline), style = "outline" }
     end
-    local native = goldSeed(id)
-    if native then
-      return { name = "GEN 2", body = rgbCopy(native.body),
-               accent = rgbCopy(native.accent),
-               third = rgbCopy(native.outline), style = "outline" }
-    end
+    -- No native answer: Gen 1, or a ball whose mod registered no palette.
+    if TMB_PRESETS[id] then return fromRow(TMB_PRESETS[id][1]) end
     local g = GENERIC_PRESETS[1]
     return { name = g.name, body = rgbCopy(g.body), accent = rgbCopy(g.accent),
              third = rgbCopy(g.third), style = g.style }
+  end
+
+  -- Does this mod paint this ball on a Gen 2 boot with nothing saved?
+  -- Only the cart's own balls, so a mod ball keeps its author's colour
+  -- unless the player picks something else in the editor.
+  local function assertsGoldDefault(id)
+    return BALL_PRESETS[id] ~= nil
+      and mod.options:get("enabled")
+      and mod.options:get("gen2_recolor")
+  end
+
+  -- defaultPreset's {third, style} shape as the {line|outline} shape the
+  -- colour entries use.
+  local function entryFromPreset(p)
+    local out = { body = rgbCopy(p.body), accent = rgbCopy(p.accent) }
+    out[p.style == "line" and "line" or "outline"] = rgbCopy(p.third)
+    return out
   end
 
   local function presetsForBall(id)
@@ -668,14 +711,15 @@ return function(mod)
     else
       for i, g in ipairs(GENERIC_PRESETS) do out[i] = g end
     end
-    -- The game's OWN ball colours, kept as a named choice rather than as an
-    -- unnamed "default" state.  Only Gen 2 has any: Gold, Silver and Crystal
-    -- colour their balls from the cart, which is what this mod decorates
-    -- there.  Gen 1 has no native ball colour at all -- the vanilla ball is
-    -- two SGB zone shades -- so there is nothing to offer under a GEN 1 name.
+    -- The ball's OWN colour, kept as a named choice.  Called ORIGINAL and not
+    -- GEN 2 because for a mod-added ball it is not the cart's colour at all --
+    -- goldSeed walks the ballPalette wrap chain, so on a Too Many Balls ball
+    -- it returns the palette THAT mod registered.  ORIGINAL is true for both.
+    -- Only Gen 2 has one to offer: Gen 1 has no native ball colour, the
+    -- vanilla ball being two SGB zone shades.
     local native = goldSeed(id)
     if native then
-      out[#out + 1] = { name = "GEN 2", body = native.body,
+      out[#out + 1] = { name = "ORIGINAL", body = native.body,
                         accent = native.accent, third = native.outline,
                         style = "outline" }
     end
@@ -743,6 +787,13 @@ return function(mod)
     -- So: a saved override, then what the game will actually draw, and only
     -- then our own table for a Gen 1 boot.
     local base = savedEntry(id)
+    -- What is ACTUALLY on screen, in the order the throw resolves it: a
+    -- saved override, then this mod's asserted colourway for a cart ball,
+    -- then the ball's own palette.  Seeding from anything else is how 0.1.46
+    -- ended up offering colours the game was not drawing.
+    if not base and assertsGoldDefault(id) then
+      base = entryFromPreset(defaultPreset(id))
+    end
     local goldName
     if not base then base, goldName = goldSeed(id) end
     if not base then
@@ -2227,6 +2278,17 @@ return function(mod)
     local CUSTOM_GOLD_PREFIX = "PBC_CUSTOM_"
     local function customGoldPalette(ballId)
       local entry = savedEntry(ballId)
+      -- 0.1.52: with nothing saved, the cart's OWN balls take this mod's
+      -- colourway rather than the cart's.  That is the point of the mod and
+      -- it is what the option name promises; before this it only ever
+      -- decorated the Center and left every Gold throw alone.  Scoped to
+      -- BALL_PRESETS -- the thirteen cart balls -- so a ball another mod
+      -- added keeps its author's registered palette.  Too Many Balls
+      -- declares exports.owns.ballPalettesGen2; overriding it unasked would
+      -- cross that line.
+      if not entry and assertsGoldDefault(ballId) then
+        entry = entryFromPreset(defaultPreset(ballId))
+      end
       if not entry then return nil end
       local third = entry.line or entry.outline or entry.body
       local name = CUSTOM_GOLD_PREFIX .. tostring(ballId)
@@ -2245,6 +2307,8 @@ return function(mod)
     BS2._pbcEditorOriginals = BS2._pbcEditorOriginals
       or { ballPalette = BS2.ballPalette }
     local vanillaGoldBallPalette = BS2._pbcEditorOriginals.ballPalette
+    -- goldSeed reads ORIGINAL through this, never through the live member
+    goldBallPaletteBase = vanillaGoldBallPalette
     BS2.ballPalette = function(self, ballId)
       return customGoldPalette(ballId)
         or vanillaGoldBallPalette(self, ballId)

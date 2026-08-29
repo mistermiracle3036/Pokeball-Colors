@@ -4,6 +4,27 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.52
+
+**Updating from 0.1.33?** You can redesign every Poke Ball from the in-game
+PC, in Red, Blue and Yellow with Advanced colours on and in Gold, Silver and
+Crystal. This release also includes the Ultra Ball redesign, the Elm starter
+display, and coloured Pokemon previews added in the intervening test builds.
+
+- **Balls are now recoloured in Gold, Silver and Crystal by default.** The
+  mod used to leave those games' ball throws alone and only colour the
+  Pokemon Center. The thirteen balls those games come with now use Pokeball
+  Colors' palette straight away -- no visit to the editor needed.
+- **Balls added by other mods keep their author's colours.** Too Many Balls
+  and anything else that registers a ball palette is left alone unless you
+  choose something for it yourself.
+- **A new option, "Recolor balls in GOLD family"**, turns this off if you
+  prefer the original look. It is on by default.
+- **The preset carrying a ball's own colours is now called ORIGINAL** rather
+  than GEN 2, because for a mod-added ball it is that mod's colour, not the
+  game's.
+- Everything from 0.1.51 below still applies.
+
 ## 0.1.51
 
 **Updating from 0.1.33?** You can redesign every Poke Ball from the in-game
