@@ -4,6 +4,27 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.43
+
+**Updating from 0.1.33?** You can redesign every Poke Ball from the in-game
+PC, in Red, Blue and Yellow with Advanced colours on and in Gold, Silver and
+Crystal. This release also includes the Ultra Ball redesign, the Elm starter
+display, and coloured Pokemon previews added in the intervening test builds.
+
+- **The preview now looks like a Poke Ball.** It draws the three colours where
+  they actually land on the ball -- body across the top, accent on the lower
+  half and the button, and your third colour as either the seam or the rim,
+  whichever the STYLE row is set to. The old swatch showed a highlight blob
+  that did not correspond to anything you would see when you threw it.
+- **Fixed: editing a ball's colours now updates Pokemon you already caught.**
+  In the Pokemon Center, a Pokemon caught before you changed that ball's
+  colours kept the old look forever, while your starter changed -- so one
+  ball in the row never matched the others. Every ball in the machine now
+  follows the colours you have set. Existing saves are repaired on load; you
+  do not need to re-catch anything.
+- Kecleon Ball and other colour-shifting balls are unaffected: they still keep
+  the colour they were caught with, which is the point of them.
+
 ## 0.1.42
 
 **Updating from 0.1.33?** You can redesign every Poke Ball from the in-game

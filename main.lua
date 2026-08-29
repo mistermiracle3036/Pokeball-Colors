@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.42"
+  local VERSION = "0.1.43"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -749,19 +749,31 @@ return function(mod)
         local previousShader = G.getShader()
         G.setShader()
         local function set(c) G.setColor(c[1] / 255, c[2] / 255, c[3] / 255, 1) end
-        set(w.body)
-        G.circle("fill", 24, 24, 22)
+
+        -- Laid out to match what the three editable colours actually paint in
+        -- the ball art, so the swatch predicts the throw instead of merely
+        -- listing the colours.  The DMG indices are:
+        --   index 2 -> body   : the upper body mass
+        --   index 1 -> accent : the lower crescent AND the centre button
+        --   index 3 -> third  : the seam band, or the perimeter ring
+        -- Only ONE of seam/ring is the third colour -- whichever the STYLE row
+        -- selects -- and the other stays black, exactly as the re-indexed
+        -- BAND_TILES art does it.  The old swatch drew an off-centre highlight
+        -- blob that corresponded to nothing on the ball.
+        local rim  = (w.style == "outline") and w.third or BLACK
+        local seam = (w.style == "line") and w.third or BLACK
+        set(rim)
+        G.circle("fill", 24, 24, 22)                            -- perimeter
         set(w.accent)
-        G.circle("fill", 18, 17, 12)
-        set(w.third)
-        if w.style == "line" then
-          G.rectangle("fill", 4, 22, 40, 5)
-        else
-          G.setLineWidth(4)
-          G.circle("line", 24, 24, 21)
-          G.setLineWidth(1)
-        end
-        G.circle("fill", 24, 24, 5)
+        G.circle("fill", 24, 24, 20)                            -- lower half
+        set(w.body)
+        G.arc("fill", "pie", 24, 24, 20, math.pi, 2 * math.pi)  -- upper mass
+        set(seam)
+        G.rectangle("fill", 4, 21, 40, 5)                       -- the seam
+        set(rim)
+        G.circle("fill", 24, 24, 6)                             -- button ring
+        set(w.accent)
+        G.circle("fill", 24, 24, 4)                             -- button face
         G.setShader(previousShader)
         G.pop()
 
@@ -1424,8 +1436,15 @@ return function(mod)
   mod.events:on("pokemon.caught", function(p)
     if not (p and p.mon and p.ball) then return end
     if p.mon.caughtBall == nil then p.mon.caughtBall = p.ball end
-    if p.mon.caughtBallColor == nil
-       and (RESOLVERS[p.ball] or savedEntry(p.ball)) then
+    -- Pin ONLY for a resolver.  0.1.42 and earlier also pinned when the ball
+    -- had a saved player override, which froze that colour onto the mon: the
+    -- player then edited POKE BALL in the editor and every mon already caught
+    -- in one kept the old colour in the Center, while the starter (never
+    -- caught, so never pinned) tracked the edit and looked like the odd one
+    -- out.  A static override needs no pin -- resolveEntry consults
+    -- savedEntry first, so a live lookup already returns it, and it stays
+    -- live when the player edits it again.
+    if p.mon.caughtBallColor == nil and RESOLVERS[p.ball] then
       local entry = resolveEntry(p.ball, { ball = p.ball, surface = "catch",
                                            battle = p.battle, mon = p.mon,
                                            game = p.game or gameRef })
@@ -1434,8 +1453,10 @@ return function(mod)
         p.mon.caughtBallColor = entryCopy(entry)
       end
     end
+    -- Same rule on Gold: a saved override resolves live through the wrapped
+    -- ballPalette, so pinning it only makes a later edit invisible.
     if p.mon.caughtBallPalette == nil and p.mon.caughtBallPaletteRow == nil
-       and goldPinFor then
+       and goldPinFor and not savedEntry(p.ball) then
       local name, row = goldPinFor(p.ball, p.mon, p.battle)
       -- a SYMBOLIC name (PAL_BATTLE_OB_ENEMY) means "whatever is in front of
       -- you", which is meaningless once the battle is over -- pin the
@@ -1551,8 +1572,16 @@ return function(mod)
         local party = gameRef and gameRef.save and gameRef.save.party
         local mon = party and party[ballIndex]
         local ball = (mon and mon.caughtBall) or "POKE_BALL"
-        -- the snapshot first: a dynamic ball's colour was decided at catch
-        local c = (mon and mon.caughtBallColor)
+        -- A player override is LIVE and outranks the snapshot, so editing a
+        -- ball repaints every mon already caught in one -- including mons
+        -- carrying a stale pin written by 0.1.42 or earlier.  Below it, the
+        -- snapshot: a dynamic ball's colour was decided at catch.
+        -- The pin is trusted only for a ball that actually HAS a resolver.
+        -- 0.1.42 and earlier also pinned static overrides, so a save can carry
+        -- a frozen colour for an ordinary ball; honouring it would make the
+        -- old colour reappear the moment the player pressed RESTORE DEFAULT.
+        local c = savedEntry(ball)
+          or (RESOLVERS[ball] and mon and mon.caughtBallColor)
           or resolveEntry(ball, { ball = ball, surface = "center",
                                   mon = mon, game = gameRef })
         if not c then warnMissingColor(ball) end
@@ -1745,10 +1774,24 @@ return function(mod)
           ballIndex = ballIndex + 1
           local party = game.save and game.save.party
           local mon = party and party[ballIndex]
-          -- the pinned name first, then a live lookup for older catches
-          local row = (mon and mon.caughtBallPaletteRow)
-            or rowForName((mon and mon.caughtBallPalette)
-              or nameFor((mon and mon.caughtBall) or "POKE_BALL", nil))
+          -- A player override is LIVE and outranks the pin (same rule as the
+          -- Gen 1 Center above), so an edit reaches mons already caught and
+          -- heals a stale pin left by 0.1.42 or earlier.  Then the pinned
+          -- name, then a live lookup for older catches.
+          local ballId = (mon and mon.caughtBall) or "POKE_BALL"
+          -- A pinned NAME beginning with the custom prefix is a static
+          -- override frozen by 0.1.42 or earlier, not a dynamic ball's
+          -- answer; drop it so RESTORE DEFAULT cannot bring it back.  A
+          -- pinned ROW is only ever written for a symbolic palette, which
+          -- genuinely is "the colour it was caught with".
+          local pinnedName = mon and mon.caughtBallPalette
+          if pinnedName
+             and pinnedName:sub(1, #CUSTOM_GOLD_PREFIX) == CUSTOM_GOLD_PREFIX then
+            pinnedName = nil
+          end
+          local row = (savedEntry(ballId) and rowForName(nameFor(ballId, nil)))
+            or (mon and mon.caughtBallPaletteRow)
+            or rowForName(pinnedName or nameFor(ballId, nil))
           if row and GbcPalette.available() then
             local prev = lg.getShader()
             GbcPalette.useRaw(
