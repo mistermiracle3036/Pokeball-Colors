@@ -4,6 +4,26 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.49
+
+**Updating from 0.1.33?** You can redesign every Poke Ball from the in-game
+PC, in Red, Blue and Yellow with Advanced colours on and in Gold, Silver and
+Crystal. This release also includes the Ultra Ball redesign, the Elm starter
+display, and coloured Pokemon previews added in the intervening test builds.
+
+- **You can get back to a ball's original colours from the PRESET row.**
+  DEFAULT is now part of the cycle, so it is always one step away in either
+  direction. Previously, once you moved off it you could only return by using
+  RESTORE DEFAULT.
+- **Balls from Too Many Balls have their own presets** -- two colourways each
+  for Premier, Nest, Heal, Mirror, Silph, Snare, Catalyst, Drift, Kecleon,
+  Cradle, Ace, Luxury, Cherish, Cage, Crystal, Strange, Origin, Beast, GS and
+  the modern balls, instead of the same six generic ones.
+- **Renamed the CLASSIC preset**, which sounded like it meant "put it back how
+  it was" when it actually painted the ball Poke Ball red. Preset names are
+  now colours.
+- Everything from 0.1.48 below still applies.
+
 ## 0.1.48
 
 **Updating from 0.1.33?** You can redesign every Poke Ball from the in-game

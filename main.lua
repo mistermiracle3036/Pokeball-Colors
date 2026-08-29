@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.48"
+  local VERSION = "0.1.49"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -471,8 +471,11 @@ return function(mod)
     LOVE_BALL = true,
   }
   local GENERIC_PRESETS = {
-    { name = "CLASSIC", body = {224,72,56}, accent = {248,216,208},
-      third = {0,0,0}, style = "line" },
+    -- NOT "CLASSIC": with DEFAULT now first in the cycle, a preset called
+    -- CLASSIC read as "put it back how it was" while actually painting the
+    -- ball Poke Ball red.  Every preset name here is a colourway.
+    { name = "CRIMSON", body = {224,72,56}, accent = {248,216,208},
+      third = {0,0,0}, style = "outline" },
     { name = "OCEAN", body = {48,112,224}, accent = {192,232,248},
       third = {8,32,96}, style = "outline" },
     { name = "FOREST", body = {64,152,80}, accent = {208,240,184},
@@ -486,12 +489,12 @@ return function(mod)
   }
   local BALL_PRESETS = {
     POKE_BALL = {
-      { "CLASSIC", {224,72,56}, {248,216,208}, {0,0,0}, "line" },
+      { "CRIMSON", {224,72,56}, {248,216,208}, {0,0,0}, "outline" },
       { "PREMIER", {240,240,232}, {224,72,56}, {120,24,24}, "line" },
       { "ROCKET", {48,48,56}, {240,48,40}, {0,0,0}, "outline" },
     },
     GREAT_BALL = {
-      { "CLASSIC", {56,112,216}, {208,224,248}, {0,0,0}, "line" },
+      { "AZURE", {56,112,216}, {208,224,248}, {0,0,0}, "outline" },
       { "COBALT", {32,72,168}, {112,200,248}, {8,24,72}, "outline" },
       { "SCARLET", {200,48,56}, {248,200,112}, {72,8,16}, "line" },
     },
@@ -501,12 +504,12 @@ return function(mod)
       { "PLATINUM", {216,224,232}, {104,112,128}, {24,24,32}, "outline" },
     },
     MASTER_BALL = {
-      { "CLASSIC", {152,72,200}, {232,200,248}, {0,0,0}, "line" },
+      { "VIOLET", {152,72,200}, {232,200,248}, {0,0,0}, "outline" },
       { "GALAXY", {64,40,144}, {216,120,240}, {16,8,48}, "outline" },
       { "PEARL", {240,224,248}, {176,112,208}, {72,32,96}, "line" },
     },
     SAFARI_BALL = {
-      { "CLASSIC", {112,160,72}, {224,232,200}, {0,0,0}, "line" },
+      { "OLIVE", {112,160,72}, {224,232,200}, {0,0,0}, "outline" },
       { "MARSH", {72,112,72}, {176,200,136}, {24,48,32}, "line" },
       { "DESERT", {184,144,72}, {240,216,152}, {72,48,16}, "outline" },
     },
@@ -544,13 +547,74 @@ return function(mod)
     },
   }
 
+  -- Too Many Balls' balls (kanto_balls, BALL_PALETTES).  Two colourways
+  -- each, derived from that mod's own palette rows so the alternates read as
+  -- variants of the ball rather than unrelated colours.  DEFAULT is always
+  -- available above them and is what the ball ships as, so nothing here
+  -- needs to restate it.  Ids absent when that mod is not installed simply
+  -- never match -- presetsForBall falls to the generic list.
+  local TMB_PRESETS = {
+    PREMIER_BALL  = { { "IVORY", {248,248,248}, {216,216,216}, {24,24,24} },
+                      { "ONYX", {56,56,64}, {200,200,208}, {16,16,16} } },
+    NEST_BALL     = { { "MOSS", {80,200,128}, {140,230,170}, {16,64,40} },
+                      { "AMBER", {216,160,48}, {248,224,152}, {72,48,8} } },
+    HEAL_BALL     = { { "BLOSSOM", {232,160,196}, {248,238,244}, {96,32,64} },
+                      { "MINT", {120,216,184}, {224,248,240}, {24,80,64} } },
+    MIRROR_BALL   = { { "SILVER", {168,180,200}, {244,250,255}, {48,56,72} },
+                      { "PRISM", {136,168,232}, {232,216,248}, {40,40,88} } },
+    SILPH_BALL    = { { "SILPH", {120,88,168}, {96,216,200}, {32,24,56} },
+                      { "NEON", {64,224,208}, {248,120,200}, {16,48,56} } },
+    SNARE_BALL    = { { "SNARE", {56,104,72}, {224,216,176}, {16,32,24} },
+                      { "BRIAR", {104,80,56}, {200,184,128}, {32,24,16} } },
+    CATALYST_BALL = { { "PLASMA", {200,72,208}, {236,168,244}, {56,16,64} },
+                      { "EMBER", {224,96,48}, {248,200,120}, {72,24,8} } },
+    DRIFT_BALL    = { { "DRIFT", {152,200,232}, {248,250,252}, {40,64,88} },
+                      { "STORM", {88,104,136}, {200,216,240}, {24,32,48} } },
+    KECLEON_BALL  = { { "MIMIC", {72,168,96}, {216,72,88}, {16,48,24} },
+                      { "JUNGLE", {40,120,64}, {184,216,120}, {8,32,16} } },
+    CRADLE_BALL   = { { "CRADLE", {184,168,216}, {248,232,200}, {56,48,80} },
+                      { "DAWN", {248,192,152}, {248,232,216}, {96,56,40} } },
+    ACE_BALL      = { { "ACE", {56,88,176}, {240,192,64}, {16,24,56} },
+                      { "TROPHY", {216,176,64}, {248,232,176}, {72,56,16} } },
+    LUXURY_BALL   = { { "LUXURY", {32,32,40}, {232,192,64}, {0,0,0} },
+                      { "VELVET", {96,32,56}, {232,184,120}, {32,8,16} } },
+    CHERISH_BALL  = { { "CHERISH", {224,48,56}, {248,128,128}, {72,8,16} },
+                      { "ROSE", {232,128,160}, {248,216,224}, {88,24,48} } },
+    CAGE_BALL     = { { "CAGE", {48,56,72}, {72,208,224}, {16,16,24} },
+                      { "RUST", {152,88,48}, {216,168,112}, {48,24,8} } },
+    CRYSTAL_BALL  = { { "CRYSTAL", {176,224,248}, {248,252,255}, {40,72,96} },
+                      { "FROST", {120,184,224}, {232,244,252}, {24,48,72} } },
+    STRANGE_BALL  = { { "STRANGE", {48,152,152}, {160,224,176}, {8,40,40} },
+                      { "VOID", {40,32,64}, {136,120,200}, {8,8,24} } },
+    ORIGIN_BALL   = { { "ORIGIN", {208,48,48}, {240,192,64}, {64,8,8} },
+                      { "RELIC", {168,144,96}, {232,216,176}, {56,40,24} } },
+    BEAST_BALL    = { { "BEAST", {16,24,56}, {244,216,72}, {0,0,16} },
+                      { "AETHER", {224,232,240}, {120,200,216}, {40,56,72} } },
+    GS_BALL       = { { "GS", {224,168,32}, {232,236,240}, {72,48,8} },
+                      { "ANTIQUE", {168,136,64}, {224,208,160}, {48,32,8} } },
+    QUICK_BALL    = { { "QUICK", {64,160,224}, {240,208,72}, {16,40,72} },
+                      { "SPARK", {248,232,96}, {248,248,216}, {96,72,8} } },
+    TIMER_BALL    = { { "TIMER", {232,232,232}, {216,64,64}, {32,32,32} },
+                      { "MIDNITE", {40,40,56}, {216,64,64}, {8,8,16} } },
+    NET_BALL      = { { "NET", {48,152,168}, {184,232,240}, {8,48,56} },
+                      { "REEF", {64,184,144}, {240,232,168}, {16,56,48} } },
+    DUSK_BALL     = { { "DUSK", {64,56,72}, {208,128,48}, {16,8,24} },
+                      { "TWILITE", {88,72,136}, {232,176,96}, {24,16,48} } },
+    REPEAT_BALL   = { { "REPEAT", {224,168,48}, {248,224,168}, {72,40,8} },
+                      { "ECHO", {160,120,200}, {232,216,248}, {48,24,72} } },
+    DREAM_BALL    = { { "DREAM", {200,152,216}, {248,224,240}, {64,40,80} },
+                      { "LULLABY", {136,168,216}, {240,240,248}, {32,48,80} } },
+    DIVE_BALL     = { { "DIVE", {32,120,184}, {168,224,240}, {8,32,64} },
+                      { "ABYSS", {16,40,88}, {80,168,200}, {0,8,24} } },
+  }
+
   local function presetsForBall(id)
-    local rows = BALL_PRESETS[id]
+    local rows = BALL_PRESETS[id] or TMB_PRESETS[id]
     if not rows then return GENERIC_PRESETS end
     local out = {}
     for i, row in ipairs(rows) do
       out[i] = { name = row[1], body = row[2], accent = row[3],
-        third = row[4], style = row[5] }
+        third = row[4], style = row[5] or "outline" }
     end
     return out
   end
@@ -760,8 +824,19 @@ return function(mod)
         editRow, mode = 1, "edit"
       end
 
+      -- presetIndex 0 IS a real stop in the cycle, not an absence: it is
+      -- DEFAULT, the colours the ball ships with.  Selecting it clears the
+      -- saved override rather than writing one, which is the same thing the
+      -- RESTORE DEFAULT row does.  Before 0.1.49 index 0 could only be
+      -- LEFT -- the wrap ran 1..#presets -- so once a player cycled off it
+      -- there was no way back to the ball's own colours from this row.
       local function applyPreset()
         local p = presets[presetIndex]
+        if not p then
+          clearSavedEntry(ball.id)
+          working = editableEntry(ball.id)
+          return
+        end
         working = {
           body = rgbCopy(p.body), accent = rgbCopy(p.accent),
           third = rgbCopy(p.third), style = p.style,
@@ -827,13 +902,11 @@ return function(mod)
           local direction = input:wasPressed("right") and 1 or -1
           local kind = rowKind(editRow)
           if kind == "PRESET" and #presets > 0 then
-            -- presetIndex 0 means "these are the ball's own colours, not a
-            -- preset"; stepping off it enters the list at either end.
-            if presetIndex == 0 then
-              presetIndex = direction > 0 and 1 or #presets
-            else
-              presetIndex = ((presetIndex - 1 + direction) % #presets) + 1
-            end
+            -- 0..#presets inclusive, wrapping through 0 (DEFAULT) so the
+            -- ball's own colours are always one step away in either
+            -- direction.  Lua's % is already non-negative for a positive
+            -- divisor, so -1 wraps to the top on its own.
+            presetIndex = (presetIndex + direction) % (#presets + 1)
             applyPreset()
           elseif kind == "STYLE" then
             toggleStyle()
@@ -841,7 +914,6 @@ return function(mod)
         elseif input:wasPressed("a") then
           local kind = rowKind(editRow)
           if kind == "PRESET" then
-            if presetIndex == 0 then presetIndex = 1 end
             applyPreset()
           elseif kind == "STYLE" then
             toggleStyle()
