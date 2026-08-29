@@ -67,18 +67,16 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.54"
+  local VERSION = "0.1.55"
   mod.exports.version = VERSION
 
   mod.options:define({
     { key = "enabled", type = "toggle",
-      label = "Colored balls (ADVANCED mode)", default = true },
-    { key = "snag_ball_color", type = "toggle",
-      label = "Rocket-colored SNAG BALL", default = true },
+      -- Not "(ADVANCED mode)" any more: that is a Gen 1 colour mode, and
+      -- this switch gates the Gen 2 work too.
+      label = "Colored balls", default = true },
     { key = "center_balls", type = "toggle",
       label = "Colored balls at POKeMON CENTER", default = true },
-    { key = "ball_band", type = "toggle",
-      label = "Black band/outline on balls", default = true },
     { key = "ball_art_takeover", type = "toggle",
       label = "My ball colors over other mods", default = false },
     { key = "gen2_recolor", type = "toggle",
@@ -86,8 +84,6 @@ return function(mod)
       -- and naming one of the three in a setting that governs all of them
       -- reads as though the other two are excluded.
       label = "Recolor balls in GEN 2 games", default = true },
-    { key = "editor_mod_balls", type = "toggle",
-      label = "Show mod balls in color editor", default = true },
     { key = "dev_all_balls_in_marts", type = "toggle",
       label = "DEV: every ball sold in marts", default = false },
   })
@@ -750,7 +746,11 @@ return function(mod)
   local function ballCatalog(game)
     local data = game and game.data or {}
     local records = data.gen2Balls or data.balls or {}
-    local includeMods = mod.options:get("editor_mod_balls") == true
+    -- Every ball the game knows, mod-added included.  The old SHOW MOD BALLS
+    -- toggle is gone: hiding balls you own from a list of balls you own is
+    -- not a preference, and since 0.1.52 a mod ball defaults to its author's
+    -- colour anyway, so there is nothing to hide FROM.
+    local includeMods = true
     local out, seen = {}, {}
     local function add(id)
       if seen[id] then return end
@@ -1102,7 +1102,9 @@ return function(mod)
         -- point of the swatch: someone picking colours should be looking at
         -- the ball that will be thrown.
         local art = previewBallArt and previewBallArt(
-          self.game or gameRef, w, mod.options:get("ball_band"),
+          -- `true`: the third colour always paints now, so the seam/outline
+          -- choice is entirely the entry's own style.
+          self.game or gameRef, w, true,
           isGen2(self.game))
         if art then
           art:setFilter("nearest", "nearest")
@@ -1268,16 +1270,13 @@ return function(mod)
           local presetLabel = presetIndex > 0 and presets[presetIndex]
             and presets[presetIndex].name or "CUSTOM"
           drawCycler(label(presetLabel, 8), 24, #presets > 0)
-          -- Only Gen 1 still has a STYLE row, and it reports the region that
-          -- will ACTUALLY be painted: with the band option off, thirdColor
-          -- returns nil and slot 3 falls back to the body, so neither BAND
-          -- nor OUTLINE would be true.
+          -- Only Gen 1 has a STYLE row, and it is now the ONLY thing that
+          -- decides where the third colour lands.  The old global band
+          -- toggle is gone: it contradicted this row, since turning it off
+          -- made slot 3 paint nothing while the row still offered a choice.
           if styleRowY then
-            local bandOn = mod.options:get("ball_band")
-            drawCycler(
-              (not bandOn) and "OFF"
-                or (working.style == "line" and "BAND" or "OUTLINE"),
-              104, bandOn)
+            drawCycler(working.style == "line" and "BAND" or "OUTLINE",
+              104, true)
           end
           drawBallPreview(120, 60, working)
           Font.draw("A: SELECT", 16, 120)
@@ -1826,10 +1825,6 @@ return function(mod)
     if not ball then return nil end
     if PaletteFX.mode ~= "redpp" then return nil end
     if not mod.options:get("enabled") then return nil end
-    if not mod.options:get("ball_band") then return nil end
-    if ball == "SNAG_BALL" and not mod.options:get("snag_ball_color") then
-      return nil
-    end
     local c = resolveEntry(ball, { ball = ball, surface = "battle",
                                    battle = activeBattle, game = gameRef })
     if not c then return nil end
@@ -1845,10 +1840,6 @@ return function(mod)
     if not colorPassEverRan then return nil end
     if PaletteFX.mode ~= "redpp" then return nil end
     if not mod.options:get("enabled") then return nil end
-    if not mod.options:get("ball_band") then return nil end
-    if ball == "SNAG_BALL" and not mod.options:get("snag_ball_color") then
-      return nil
-    end
     local c = resolveEntry(ball, { ball = ball, surface = "battle",
                                    battle = activeBattle, game = gameRef })
     return c and c.line or nil
@@ -1932,9 +1923,6 @@ return function(mod)
       ball = self._pbcBall
     end
 
-    if ball == "SNAG_BALL" and not mod.options:get("snag_ball_color") then
-      return out
-    end
     local c = ball and resolveEntry(ball, { ball = ball, surface = "battle",
                                             battle = self, game = gameRef })
     if not c then

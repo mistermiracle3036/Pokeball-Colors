@@ -4,6 +4,22 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.55
+
+**Updating from 0.1.33?** You can redesign every Poke Ball from the in-game
+PC, in Red, Blue and Yellow with Advanced colours on and in Gold, Silver and
+Crystal. This release also includes the Ultra Ball redesign, the Elm starter
+display, and coloured Pokemon previews added in the intervening test builds.
+
+- **Three options removed, all replaced by the PC editor.** BLACK
+  BAND/OUTLINE ON BALLS is now the STYLE row, chosen per ball instead of for
+  all of them at once. ROCKET-COLORED SNAG BALL is gone because you can now
+  colour the Snag Ball however you like. SHOW MOD BALLS IN COLOR EDITOR is
+  gone because the editor simply lists every ball.
+- The master switch is now just **COLORED BALLS** -- it covers Gold, Silver
+  and Crystal as well, so naming a Red/Blue/Yellow colour mode was wrong.
+- Everything from 0.1.54 below still applies.
+
 ## 0.1.54
 
 **Updating from 0.1.33?** You can redesign every Poke Ball from the in-game

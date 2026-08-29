@@ -103,13 +103,16 @@ Open **MODS → POKEBALL COLORS → OPTIONS** (F10 mod manager):
 
 | Option | Default | Effect |
 | ------ | ------- | ------ |
-| COLORED BALLS (ADVANCED MODE) | ON | Master switch for all ball coloring |
-| ROCKET-COLORED SNAG BALL | ON | Snag Ball throws in black/red instead of its normal colors |
+| COLORED BALLS | ON | Master switch for all ball coloring |
 | COLORED BALLS AT POKeMON CENTER | ON | The heal machine's balls use each mon's caught ball (both games) |
-| BLACK BAND/OUTLINE ON BALLS | ON | The third colour on a ball - its seam band or its rim |
 | MY BALL COLORS OVER OTHER MODS | OFF | Win the ball art when another mod supplies its own |
-| SHOW MOD BALLS IN COLOR EDITOR | ON | Include installed mod-added balls in the PC editor |
+| RECOLOR BALLS IN GEN 2 GAMES | ON | Gold/Silver/Crystal's own balls use this mod's colors by default |
 | DEV: EVERY BALL SOLD IN MARTS | OFF | Every mart stocks every ball in the game |
+
+Three options were removed in 0.1.55, all superseded by the PC editor:
+ROCKET-COLORED SNAG BALL and BLACK BAND/OUTLINE ON BALLS are now per-ball
+choices there (the STYLE row picks band or rim), and SHOW MOD BALLS IN
+COLOR EDITOR is gone because the editor always lists every ball.
 
 Every toggle is live — they take effect on your next throw, no restart
 needed.
@@ -228,9 +231,9 @@ back and forth during the throw.
 `line` is optional and paints the band along the seam between the two
 halves, in battle only. Leave it out and your ball renders exactly as it
 did before 0.1.15 — and it degrades on its own besides, so supplying it
-is always safe: the band disappears if the player turns the "Black band
-on thrown balls" option off, and an older copy of this mod that has never
-heard of the key ignores it rather than rejecting your registration.
+is always safe: the player can switch any ball between the band and the
+rim from the PC editor's STYLE row, and an older copy of this mod that has
+never heard of the key ignores it rather than rejecting your registration.
 Never a hard dependency, and never a reason to bump a version floor.
 
 A band needs somewhere to read: if your ball's `accent` is already dark,
