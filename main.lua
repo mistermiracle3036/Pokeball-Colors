@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.50"
+  local VERSION = "0.1.51"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -608,13 +608,76 @@ return function(mod)
                       { "ABYSS", {16,40,88}, {80,168,200}, {0,8,24} } },
   }
 
+  -- The Gold-family palette a ball's throw ACTUALLY resolves to, or nil.
+  local function goldSeed(id)
+    if not (gameRef and gameRef.data and gameRef.data.gen2Palettes) then
+      return nil, nil
+    end
+    local okBS, BS2 = pcall(require, "src.ui.gen2.BattleState")
+    -- `and` TRUNCATES a call to one value, so folding this into the
+    -- condition made `name` always nil, every lookup miss, and every ball
+    -- open on the red POKE_BALL fallback until the player cycled a preset.
+    -- The engine documents the same trap at BattleAnimView.lua:57.
+    local name
+    if okBS and type(BS2) == "table"
+       and type(BS2.ballPalette) == "function" then
+      local okName, res = pcall(BS2.ballPalette, {}, id)
+      if okName and type(res) == "string" then name = res end
+    end
+    local set = gameRef.data.gen2Palettes.battleObjects
+    local row = name and set and set[name]
+    if type(row) == "table" and row[2] and row[3] and row[4] then
+      return { accent = rgbCopy(row[2]), body = rgbCopy(row[3]),
+               outline = rgbCopy(row[4]) }, name
+    end
+    return nil, name
+  end
+
+  -- This mod's OWN colourway for a ball -- the first entry of whichever
+  -- table covers it.  This is what RESTORE DEFAULT hands back, and it is
+  -- deliberately not "whatever the game would draw untouched": the point of
+  -- the mod is its palette, so its palette is the baseline.  A ball nothing
+  -- covers falls to what the game draws, then to the generic list, rather
+  -- than being asserted as red.
+  local function defaultPreset(id)
+    local rows = BALL_PRESETS[id] or TMB_PRESETS[id]
+    local row = rows and rows[1]
+    if row then
+      return { name = row[1], body = rgbCopy(row[2]), accent = rgbCopy(row[3]),
+               third = rgbCopy(row[4]), style = row[5] or "outline" }
+    end
+    local native = goldSeed(id)
+    if native then
+      return { name = "GEN 2", body = rgbCopy(native.body),
+               accent = rgbCopy(native.accent),
+               third = rgbCopy(native.outline), style = "outline" }
+    end
+    local g = GENERIC_PRESETS[1]
+    return { name = g.name, body = rgbCopy(g.body), accent = rgbCopy(g.accent),
+             third = rgbCopy(g.third), style = g.style }
+  end
+
   local function presetsForBall(id)
     local rows = BALL_PRESETS[id] or TMB_PRESETS[id]
-    if not rows then return GENERIC_PRESETS end
     local out = {}
-    for i, row in ipairs(rows) do
-      out[i] = { name = row[1], body = row[2], accent = row[3],
-        third = row[4], style = row[5] or "outline" }
+    if rows then
+      for i, row in ipairs(rows) do
+        out[i] = { name = row[1], body = row[2], accent = row[3],
+          third = row[4], style = row[5] or "outline" }
+      end
+    else
+      for i, g in ipairs(GENERIC_PRESETS) do out[i] = g end
+    end
+    -- The game's OWN ball colours, kept as a named choice rather than as an
+    -- unnamed "default" state.  Only Gen 2 has any: Gold, Silver and Crystal
+    -- colour their balls from the cart, which is what this mod decorates
+    -- there.  Gen 1 has no native ball colour at all -- the vanilla ball is
+    -- two SGB zone shades -- so there is nothing to offer under a GEN 1 name.
+    local native = goldSeed(id)
+    if native then
+      out[#out + 1] = { name = "GEN 2", body = native.body,
+                        accent = native.accent, third = native.outline,
+                        style = "outline" }
     end
     return out
   end
@@ -667,31 +730,6 @@ return function(mod)
     seedFailed[msg] = true
     mod.log:warn("%s", msg)
     Runtime.reportError("pokeball_colors", msg)
-  end
-
-  -- The Gold-family palette a ball's throw ACTUALLY resolves to, or nil.
-  local function goldSeed(id)
-    if not (gameRef and gameRef.data and gameRef.data.gen2Palettes) then
-      return nil, nil
-    end
-    local okBS, BS2 = pcall(require, "src.ui.gen2.BattleState")
-    -- `and` TRUNCATES a call to one value, so folding this into the
-    -- condition made `name` always nil, every lookup miss, and every ball
-    -- open on the red POKE_BALL fallback until the player cycled a preset.
-    -- The engine documents the same trap at BattleAnimView.lua:57.
-    local name
-    if okBS and type(BS2) == "table"
-       and type(BS2.ballPalette) == "function" then
-      local okName, res = pcall(BS2.ballPalette, {}, id)
-      if okName and type(res) == "string" then name = res end
-    end
-    local set = gameRef.data.gen2Palettes.battleObjects
-    local row = name and set and set[name]
-    if type(row) == "table" and row[2] and row[3] and row[4] then
-      return { accent = rgbCopy(row[2]), body = rgbCopy(row[3]),
-               outline = rgbCopy(row[4]) }, name
-    end
-    return nil, name
   end
 
   local function editableEntry(id)
@@ -824,19 +862,16 @@ return function(mod)
         editRow, mode = 1, "edit"
       end
 
-      -- presetIndex 0 IS a real stop in the cycle, not an absence: it is
-      -- DEFAULT, the colours the ball ships with.  Selecting it clears the
-      -- saved override rather than writing one, which is the same thing the
-      -- RESTORE DEFAULT row does.  Before 0.1.49 index 0 could only be
-      -- LEFT -- the wrap ran 1..#presets -- so once a player cycled off it
-      -- there was no way back to the ball's own colours from this row.
+      -- Every stop in the cycle is a NAMED colourway now.  0.1.49 kept a
+      -- nameless DEFAULT at index 0 that meant "clear the override"; the
+      -- developer's call is that a preset row should offer names, and that
+      -- the game's own colours belong in the list under an obvious one --
+      -- GEN 2 -- rather than hiding behind the word default.  Index 0 now
+      -- only ever means "hand-edited RGB that matches no preset", which the
+      -- row reports as CUSTOM and which cycling steps off.
       local function applyPreset()
         local p = presets[presetIndex]
-        if not p then
-          clearSavedEntry(ball.id)
-          working = editableEntry(ball.id)
-          return
-        end
+        if not p then return end
         working = {
           body = rgbCopy(p.body), accent = rgbCopy(p.accent),
           third = rgbCopy(p.third), style = p.style,
@@ -902,11 +937,13 @@ return function(mod)
           local direction = input:wasPressed("right") and 1 or -1
           local kind = rowKind(editRow)
           if kind == "PRESET" and #presets > 0 then
-            -- 0..#presets inclusive, wrapping through 0 (DEFAULT) so the
-            -- ball's own colours are always one step away in either
-            -- direction.  Lua's % is already non-negative for a positive
-            -- divisor, so -1 wraps to the top on its own.
-            presetIndex = (presetIndex + direction) % (#presets + 1)
+            -- 1..#presets.  From CUSTOM (0) a step enters the list at
+            -- whichever end the player moved toward.
+            if presetIndex == 0 then
+              presetIndex = direction > 0 and 1 or #presets
+            else
+              presetIndex = ((presetIndex - 1 + direction) % #presets) + 1
+            end
             applyPreset()
           elseif kind == "STYLE" then
             toggleStyle()
@@ -914,6 +951,7 @@ return function(mod)
         elseif input:wasPressed("a") then
           local kind = rowKind(editRow)
           if kind == "PRESET" then
+            if presetIndex == 0 then presetIndex = 1 end
             applyPreset()
           elseif kind == "STYLE" then
             toggleStyle()
@@ -921,8 +959,14 @@ return function(mod)
             rgbPart = kind:lower()
             rgbChannel, mode = 1, "rgb"
           elseif kind == "RESTORE DEFAULT" then
-            clearSavedEntry(ball.id)
-            working = editableEntry(ball.id)
+            -- WRITES this mod's colourway rather than clearing the override.
+            -- Clearing would hand the ball back to the game untouched, which
+            -- on Gold means its cart colours -- not what "restore Pokeball
+            -- Colors' default" should mean.  On Gen 2 it has to be written
+            -- to take effect at all: with no saved entry customGoldPalette
+            -- returns nil and the cart palette stands.
+            working = defaultPreset(ball.id)
+            persistWorking(ball.id, working)
             presetIndex = matchingPreset(working, presets)
           elseif kind == "DONE" then
             mode = "list"
@@ -1123,7 +1167,7 @@ return function(mod)
           -- ball's own.  Opening a ball applies no preset, so naming one
           -- there described nothing the player could see.
           local presetLabel = presetIndex > 0 and presets[presetIndex]
-            and presets[presetIndex].name or "DEFAULT"
+            and presets[presetIndex].name or "CUSTOM"
           drawCycler(label(presetLabel, 8), 24, #presets > 0)
           -- Only Gen 1 still has a STYLE row, and it reports the region that
           -- will ACTUALLY be painted: with the band option off, thirdColor

@@ -4,6 +4,23 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.51
+
+**Updating from 0.1.33?** You can redesign every Poke Ball from the in-game
+PC, in Red, Blue and Yellow with Advanced colours on and in Gold, Silver and
+Crystal. This release also includes the Ultra Ball redesign, the Elm starter
+display, and coloured Pokemon previews added in the intervening test builds.
+
+- **Every preset has a name now.** The nameless DEFAULT entry is gone.
+- **In Gold, Silver and Crystal the game's own ball colours are a preset
+  called GEN 2**, so you can still pick the green Master Ball or the blue
+  Fast Ball the cart uses -- it is just no longer hiding behind the word
+  "default".
+- **RESTORE DEFAULT gives you Pokeball Colors' own colours for that ball**,
+  not the untouched cart colours. That is what the mod is for.
+- A ball you have hand-edited reads CUSTOM until it matches a preset again.
+- Everything from 0.1.50 below still applies.
+
 ## 0.1.50
 
 **Updating from 0.1.33?** You can redesign every Poke Ball from the in-game
