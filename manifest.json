@@ -1,7 +1,7 @@
 {
   "id": "pokeball_colors",
   "name": "Pokeball Colors",
-  "version": "0.1.36",
+  "version": "0.1.38",
   "api": 2,
   "entry": "main.lua",
   "profile": "content",
@@ -23,5 +23,5 @@
   ],
   "conflicts": [],
   "github": "mistermiracle3036/Pokeball-Colors",
-  "description": "Per-ball colors for the battle ball toss under the ADVANCED color mode, and for the Pokemon Center heal machine on both Red/Blue/Yellow and Gold."
+  "description": "Per-ball throw, preview, heal-machine, and player-customized colors across Gen 1 and Gen 2."
 }

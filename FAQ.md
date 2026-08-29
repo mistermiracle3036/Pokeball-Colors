@@ -5,6 +5,26 @@ Every answer is collapsed. Tap only what you want revealed.
 ## Getting it working
 
 <details>
+<summary>Where is the ball color editor?</summary>
+
+Open an in-game PC and choose **BALL COLORS**. Pick a whole-ball preset or
+edit BODY, ACCENT and THIRD one RGB channel at a time. Press A on the RGB
+screen to cycle the adjustment step through 1, 8 and 32.
+
+On Red, Blue and Yellow, the saved colours appear only with COLORS set to
+ADVANCED. Gold, Silver and Crystal need no colour-mode setting.
+</details>
+
+<details>
+<summary>Why can't the band and outline have separate colours?</summary>
+
+The ball sprite has three visible palette slots: body, accent, and one third
+region. Choose BAND or OUTLINE for that third region. Both can be designed,
+but they cannot appear as two independent colours on the same throw. Gold,
+Silver and Crystal use their native third-colour pixel region.
+</details>
+
+<details>
 <summary>I installed it on Red, Blue or Yellow and my balls are still
 grey.</summary>
 
@@ -20,9 +40,9 @@ ON in the F10 mod manager.
 <details>
 <summary>I'm on Gold and a ball throws grey.</summary>
 
-**Different cause, and the answer above won't help.** On Gold this mod
-doesn't colour thrown balls at all — Gold does that itself, so there's no
-ADVANCED setting involved and nothing here to switch on.
+**Different cause, and the answer above won't help.** Gold has no ADVANCED
+setting. Its native palette colours thrown balls, and a saved BALL COLORS
+customization overrides that palette directly.
 
 A ball throws grey on Gold when **its own mod hasn't registered a palette
 for it**. The five native balls are fine. Mod balls need their author to
@@ -87,6 +107,15 @@ from, so the answer is remembered on the Pokémon at catch time instead.
 
 On Red, Blue and Yellow the ball has one fixed colour anyway, so the
 machine simply shows that.
+</details>
+
+<details>
+<summary>What happens if I customize the Kecleon Ball?</summary>
+
+Your saved design wins, so it stops matching the Pokémon it is thrown at.
+Choose **RESTORE DEFAULT** for the Kecleon Ball to remove the override and
+make it dynamic again. The mod-balls option only controls whether it appears
+in the editor; it does not erase an existing saved design.
 </details>
 
 <details>

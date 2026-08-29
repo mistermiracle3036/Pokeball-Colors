@@ -32,14 +32,32 @@ Poke Ball red.)
 Purely cosmetic. No catch rates, items, marts or battle logic are
 changed by this mod.
 
+## Ball color editor
+
+Open a PC and choose **BALL COLORS**. The wardrobe-style menu lets you choose
+any ball, apply a preset, or edit its body, accent, and third visible colour
+with full 0-255 RGB control. Press A in the RGB editor to change the adjustment
+step between 1, 8, and 32.
+
+The third colour can be assigned to a seam band or an outer outline. A Game
+Boy object sprite has one transparent palette slot and three visible slots,
+so the band and outline share the third slot and cannot display as two
+independent colours at once. Gold, Silver and Crystal keep their native ball
+pixel layout while using all three selected colours. **RESTORE DEFAULT**
+removes the saved choice.
+
+Balls added by other mods appear automatically when **SHOW MOD BALLS IN COLOR
+EDITOR** is enabled. Customizing a Kecleon Ball overrides its target-matching
+colour; restoring its default makes it dynamic again.
+
 ## Requirements
 
 - **Red, Blue and Yellow:** COLORS must be set to **ADVANCED**. The mod
   does nothing in the mono/classic color modes — those deliberately have
   no per-sprite color to give, and it passes them straight through.
-- **Gold:** nothing to set. Gold colors thrown balls by itself, so on
-  Gold this mod only does the Pokémon Center heal machine.
-- gen1recomp **0.1.38 or newer** (Gold support needs **0.1.78+**, and is
+- **Gold, Silver and Crystal:** nothing to set. Saved editor colours apply
+  directly to thrown balls and the Pokemon Center heal machine.
+- gen1recomp **0.1.38 or newer** (Gen 2 support needs **0.1.78+**, and is
   simply inactive on older builds). No hard mod dependencies.
 
 ## What gets colored
@@ -88,8 +106,9 @@ Open **MODS → POKEBALL COLORS → OPTIONS** (F10 mod manager):
 | COLORED BALLS (ADVANCED MODE) | ON | Master switch for all ball coloring |
 | ROCKET-COLORED SNAG BALL | ON | Snag Ball throws in black/red instead of its normal colors |
 | COLORED BALLS AT POKeMON CENTER | ON | The heal machine's balls use each mon's caught ball (both games) |
-| BLACK BAND/OUTLINE ON BALLS | ON | The third colour on a ball — its seam band or its rim |
+| BLACK BAND/OUTLINE ON BALLS | ON | The third colour on a ball - its seam band or its rim |
 | MY BALL COLORS OVER OTHER MODS | OFF | Win the ball art when another mod supplies its own |
+| SHOW MOD BALLS IN COLOR EDITOR | ON | Include installed mod-added balls in the PC editor |
 | DEV: EVERY BALL SOLD IN MARTS | OFF | Every mart stocks every ball in the game |
 
 Every toggle is live — they take effect on your next throw, no restart
@@ -150,7 +169,7 @@ and relaunch afterward so the new code is actually live.
   at load. This mod renders it; it doesn't define it. On Snag Quest
   0.10.x the Snag Ball simply throws in vanilla colors.
 - **Dramatic Shape (voxel mode)** — tested and working in voxel mode.
-- Works in Red, Blue, Yellow **and Gold** — nothing here touches map or
+- Works in Red, Blue, Yellow, Gold, Silver **and Crystal** - nothing here touches map or
   text data.
 - **Too Many Balls** (formerly *Kanto Balls*; mod id `kanto_balls`,
   [repo](https://github.com/mistermiracle3036/Too-Many-Balls)) — optional,

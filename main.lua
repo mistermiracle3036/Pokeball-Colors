@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.36"
+  local VERSION = "0.1.38"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -81,6 +81,8 @@ return function(mod)
       label = "Black band/outline on balls", default = true },
     { key = "ball_art_takeover", type = "toggle",
       label = "My ball colors over other mods", default = false },
+    { key = "editor_mod_balls", type = "toggle",
+      label = "Show mod balls in color editor", default = true },
     { key = "dev_all_balls_in_marts", type = "toggle",
       label = "DEV: every ball sold in marts", default = false },
   })
@@ -98,6 +100,7 @@ return function(mod)
   local activeBattle      -- the BattleState whose ball chain is running
   local gameRef           -- the live game, from game.ready
   local goldPinFor        -- Gold only: fn(ball, mon, battle) -> name, row
+  local throwCache        -- resolver result and saved-override cache per throw
 
   -- { body = the ball's main color, accent = its smaller highlight },
   -- 0-255 RGB.  CONFIRMED from a 0.1.0 capture: under the f0 shade map
@@ -149,6 +152,60 @@ return function(mod)
   }
   mod.exports.colors = COLORS
 
+  -- Per-save player choices. The editor stores the third visible colour once
+  -- plus which region receives it; a four-colour Game Boy OBJ sprite has one
+  -- transparent slot and only three visible slots, so band and outline cannot
+  -- be independently coloured at the same time.
+  local COLOR_SAVE_KEY = "ball_color_overrides"
+  local EDITOR_SCREEN = "PokeballColorEditor"
+  local EDITOR_PC_ROW = "pokeball_colors_editor"
+
+  local function rgbCopy(c)
+    return { c[1], c[2], c[3] }
+  end
+
+  local function entryCopy(c)
+    if not c then return nil end
+    local out = { body = rgbCopy(c.body), accent = rgbCopy(c.accent) }
+    if c.line then out.line = rgbCopy(c.line) end
+    if c.outline then out.outline = rgbCopy(c.outline) end
+    return out
+  end
+
+  local function savedOverrides()
+    local rows = mod.save:get(COLOR_SAVE_KEY)
+    return type(rows) == "table" and rows or {}
+  end
+
+  local function savedEntry(id)
+    local row = savedOverrides()[id]
+    if type(row) ~= "table" or type(row.body) ~= "table"
+       or type(row.accent) ~= "table" or type(row.third) ~= "table" then
+      return nil
+    end
+    local out = { body = rgbCopy(row.body), accent = rgbCopy(row.accent) }
+    out[row.style == "outline" and "outline" or "line"] = rgbCopy(row.third)
+    return out
+  end
+
+  local function saveEntry(id, entry, style)
+    local rows = savedOverrides()
+    rows[id] = {
+      body = rgbCopy(entry.body), accent = rgbCopy(entry.accent),
+      third = rgbCopy(entry.line or entry.outline or entry.body),
+      style = style == "outline" and "outline" or "line",
+    }
+    mod.save:set(COLOR_SAVE_KEY, rows)
+    throwCache = {}
+  end
+
+  local function clearSavedEntry(id)
+    local rows = savedOverrides()
+    rows[id] = nil
+    mod.save:set(COLOR_SAVE_KEY, rows)
+    throwCache = {}
+  end
+
   -- What this mod owns, for other mods to check before touching
   -- anything (see the ownership note in the README):
   --   colors           -- the color table and the rendering
@@ -174,6 +231,8 @@ return function(mod)
     caughtBallPaletteField = "mon.caughtBallPalette",
     caughtBallPaletteRowField = "mon.caughtBallPaletteRow",
     colorResolvers = true,
+    colorEditorSave = COLOR_SAVE_KEY,
+    colorEditorScreen = EDITOR_SCREEN,
   }
 
   -- ------------------------------------------------------------------
@@ -325,7 +384,7 @@ return function(mod)
 
   local RESOLVERS = {}
   local resolverDead = {}
-  local throwCache = {}
+  throwCache = {}
 
   mod.exports.registerColorResolver = function(id, fn)
     if type(id) ~= "string" or id == "" or type(fn) ~= "function" then
@@ -343,6 +402,8 @@ return function(mod)
   -- surface at once.
   local function resolveEntry(ball, ctx)
     if not ball then return nil end
+    local custom = savedEntry(ball)
+    if custom then return custom end
     local fn = RESOLVERS[ball]
     if fn and not resolverDead[ball] then
       local hit = throwCache[ball]
@@ -375,6 +436,342 @@ return function(mod)
   -- Public, so a mod reading exports.colors directly does not silently miss
   -- a resolver-backed ball.
   mod.exports.resolveColor = function(id, ctx) return resolveEntry(id, ctx) end
+
+  -- ------------------------------------------------------------------
+  -- BALL COLOR EDITOR: one wardrobe-style screen on every generation.
+  --
+  -- It is reached through the shared ui.pc.items hook. Red/Blue/Yellow use
+  -- the saved entries only while ADVANCED colours are active, exactly like
+  -- the rest of this mod; Gold/Silver/Crystal use them directly.
+  -- ------------------------------------------------------------------
+  local VISIBLE_EDITOR_ROWS = 8
+  local VANILLA_BALLS = {
+    MASTER_BALL = true, ULTRA_BALL = true, GREAT_BALL = true,
+    POKE_BALL = true, SAFARI_BALL = true, PARK_BALL = true,
+    FRIEND_BALL = true, HEAVY_BALL = true, LEVEL_BALL = true,
+    LURE_BALL = true, FAST_BALL = true, MOON_BALL = true,
+    LOVE_BALL = true,
+  }
+  local PRESETS = {
+    { name = "CLASSIC", body = {224,72,56}, accent = {248,216,208},
+      third = {0,0,0}, style = "line" },
+    { name = "OCEAN", body = {48,112,224}, accent = {192,232,248},
+      third = {8,32,96}, style = "outline" },
+    { name = "FOREST", body = {64,152,80}, accent = {208,240,184},
+      third = {16,56,24}, style = "line" },
+    { name = "GOLD", body = {248,208,64}, accent = {176,120,16},
+      third = {0,0,0}, style = "outline" },
+    { name = "PURPLE", body = {152,72,200}, accent = {232,200,248},
+      third = {40,16,64}, style = "line" },
+    { name = "MONO", body = {120,120,120}, accent = {232,232,232},
+      third = {24,24,24}, style = "outline" },
+  }
+
+  local function ballCatalog(game)
+    local data = game and game.data or {}
+    local records = data.gen2Balls or data.balls or {}
+    local includeMods = mod.options:get("editor_mod_balls") == true
+    local out = {}
+    for id in pairs(records) do
+      if VANILLA_BALLS[id] or includeMods then
+        local item = data.items and data.items[id]
+        out[#out + 1] = {
+          id = id,
+          label = (item and item.name) or id:gsub("_", " "),
+          index = item and item.index or 9999,
+        }
+      end
+    end
+    table.sort(out, function(a, b)
+      if a.index ~= b.index then return a.index < b.index end
+      return a.label < b.label
+    end)
+    return out
+  end
+
+  local function editableEntry(id)
+    local saved = savedOverrides()[id]
+    local base = savedEntry(id) or resolveEntry(id, {
+      ball = id, surface = "editor", game = gameRef,
+    })
+    -- Gold-native and Gold-mod balls need no COLORS entry. Seed the editor
+    -- from the same palette name their live throw currently resolves, so
+    -- selecting one never starts from an invented red fallback.
+    if not base and gameRef and gameRef.data and gameRef.data.gen2Palettes then
+      local okBS, BS2 = pcall(require, "src.ui.gen2.BattleState")
+      local okName, name = okBS and type(BS2.ballPalette) == "function"
+        and pcall(BS2.ballPalette, {}, id)
+      local set = gameRef.data.gen2Palettes.battleObjects
+      local row = okName and set and set[name]
+      if type(row) == "table" and row[2] and row[3] and row[4] then
+        base = {
+          accent = rgbCopy(row[2]), body = rgbCopy(row[3]),
+          outline = rgbCopy(row[4]),
+        }
+      end
+    end
+    base = base or COLORS.POKE_BALL
+    local style = type(saved) == "table" and saved.style
+      or (base.outline and "outline" or "line")
+    return {
+      body = rgbCopy(base.body), accent = rgbCopy(base.accent),
+      third = rgbCopy(base.line or base.outline or base.body),
+      style = style == "outline" and "outline" or "line",
+    }
+  end
+
+  local function entryFromWorking(w)
+    local out = { body = rgbCopy(w.body), accent = rgbCopy(w.accent) }
+    out[w.style] = rgbCopy(w.third)
+    return out
+  end
+
+  local function persistWorking(id, w)
+    saveEntry(id, entryFromWorking(w), w.style)
+  end
+
+  local function openColorEditor(game)
+    game = game or gameRef or mod.game
+    if not (game and game.stack) then return false end
+    mod.ui.push(game, EDITOR_SCREEN)
+    return true
+  end
+
+  mod.content.screens:register(EDITOR_SCREEN, {
+    new = function(game)
+      local Font, Theme = mod.ui.Font, mod.ui.Theme
+      local balls = ballCatalog(game)
+      local selected, scroll = 1, 0
+      local mode, editRow = "list", 1
+      local ball, working
+      local presetIndex = 1
+      local rgbPart, rgbChannel, rgbStep = "body", 1, 8
+      local self = { game = game, isOpaque = true, isModOptions = true }
+
+      local function ensureVisible()
+        if selected <= scroll then scroll = selected - 1 end
+        if selected > scroll + VISIBLE_EDITOR_ROWS then
+          scroll = selected - VISIBLE_EDITOR_ROWS
+        end
+      end
+
+      local function beginEdit()
+        ball = balls[selected]
+        if not ball then return end
+        working = editableEntry(ball.id)
+        editRow, mode = 1, "edit"
+      end
+
+      local function applyPreset()
+        local p = PRESETS[presetIndex]
+        working = {
+          body = rgbCopy(p.body), accent = rgbCopy(p.accent),
+          third = rgbCopy(p.third), style = p.style,
+        }
+        persistWorking(ball.id, working)
+      end
+
+      local function adjust(v, direction)
+        return math.max(0, math.min(255, v + direction * rgbStep))
+      end
+
+      function self:update(_dt)
+        local input = game and game.input
+        if not input then return end
+        if mode == "list" then
+          if input:wasPressed("up") and #balls > 0 then
+            selected = selected > 1 and selected - 1 or #balls
+            ensureVisible()
+          elseif input:wasPressed("down") and #balls > 0 then
+            selected = selected < #balls and selected + 1 or 1
+            ensureVisible()
+          elseif input:wasPressed("a") then
+            beginEdit()
+          elseif input:wasPressed("b") then
+            game.stack:pop()
+          end
+          return
+        end
+
+        if mode == "rgb" then
+          if input:wasPressed("up") then
+            rgbChannel = rgbChannel > 1 and rgbChannel - 1 or 3
+          elseif input:wasPressed("down") then
+            rgbChannel = rgbChannel < 3 and rgbChannel + 1 or 1
+          elseif input:wasPressed("left") then
+            working[rgbPart][rgbChannel] =
+              adjust(working[rgbPart][rgbChannel], -1)
+            persistWorking(ball.id, working)
+          elseif input:wasPressed("right") then
+            working[rgbPart][rgbChannel] =
+              adjust(working[rgbPart][rgbChannel], 1)
+            persistWorking(ball.id, working)
+          elseif input:wasPressed("a") then
+            rgbStep = rgbStep == 1 and 8 or (rgbStep == 8 and 32 or 1)
+          elseif input:wasPressed("b") then
+            mode = "edit"
+          end
+          return
+        end
+
+        if input:wasPressed("up") then
+          editRow = editRow > 1 and editRow - 1 or 7
+        elseif input:wasPressed("down") then
+          editRow = editRow < 7 and editRow + 1 or 1
+        elseif input:wasPressed("left") or input:wasPressed("right") then
+          local direction = input:wasPressed("right") and 1 or -1
+          if editRow == 1 then
+            presetIndex = ((presetIndex - 1 + direction) % #PRESETS) + 1
+            applyPreset()
+          elseif editRow == 2 then
+            working.style = working.style == "line" and "outline" or "line"
+            persistWorking(ball.id, working)
+          end
+        elseif input:wasPressed("a") then
+          if editRow == 1 then
+            applyPreset()
+          elseif editRow == 2 then
+            working.style = working.style == "line" and "outline" or "line"
+            persistWorking(ball.id, working)
+          elseif editRow >= 3 and editRow <= 5 then
+            rgbPart = ({ "body", "accent", "third" })[editRow - 2]
+            rgbChannel, mode = 1, "rgb"
+          elseif editRow == 6 then
+            clearSavedEntry(ball.id)
+            working = editableEntry(ball.id)
+          elseif editRow == 7 then
+            mode = "list"
+          end
+        elseif input:wasPressed("b") then
+          mode = "list"
+        end
+      end
+
+      local function drawBallPreview(x, y, w)
+        if not w then return end
+        local G = love.graphics
+        local function set(c) G.setColor(c[1] / 255, c[2] / 255, c[3] / 255, 1) end
+        set(w.body)
+        G.circle("fill", x, y, 22)
+        set(w.accent)
+        G.circle("fill", x - 6, y - 7, 12)
+        set(w.third)
+        if w.style == "line" then
+          G.rectangle("fill", x - 20, y - 2, 40, 5)
+        else
+          G.setLineWidth(4)
+          G.circle("line", x, y, 21)
+          G.setLineWidth(1)
+        end
+        G.circle("fill", x, y, 5)
+        G.setColor(1, 1, 1, 1)
+      end
+
+      local function label(s, n)
+        s = tostring(s or "")
+        return #s > n and s:sub(1, n) or s
+      end
+
+      function self:draw()
+        local G = love.graphics
+        G.setColor(0, 0, 0, 1)
+        Font.drawBox(0, 0, 20, 18)
+        if mode == "list" then
+          Font.draw("BALL COLORS", 8, 8)
+          if #balls == 0 then
+            Font.draw("NO BALLS FOUND", 16, 32)
+          end
+          for row = 1, VISIBLE_EDITOR_ROWS do
+            local i, item = scroll + row, balls[scroll + row]
+            if item then
+              local y = 24 + (row - 1) * 8
+              if i == selected then Font.drawCode(Theme.cursor, 8, y) end
+              Font.draw(label(item.label, 12), 16, y)
+              if savedOverrides()[item.id] then Font.draw("*", 112, y) end
+            end
+          end
+          Font.draw("A: EDIT", 16, 120)
+          Font.draw("B: EXIT", 88, 120)
+        elseif mode == "edit" then
+          Font.draw(label(ball and ball.label, 18), 8, 8)
+          local rows = {
+            "PRESET", "STYLE",
+            "BODY", "ACCENT", "THIRD", "RESTORE DEFAULT", "DONE",
+          }
+          for i, row in ipairs(rows) do
+            local y = 24 + (i - 1) * 8
+            if i == editRow then Font.drawCode(Theme.cursor, 8, y) end
+            Font.draw(label(row, 9), 16, y)
+          end
+          Font.draw(label(PRESETS[presetIndex].name, 8), 96, 24)
+          Font.draw(working.style == "line" and "BAND" or "OUTLINE", 96, 104)
+          drawBallPreview(126, 72, working)
+          Font.draw("A: SELECT", 16, 120)
+          Font.draw("B: BACK", 88, 120)
+        else
+          Font.draw(label(ball and ball.label, 18), 8, 8)
+          Font.draw(string.upper(rgbPart) .. " RGB", 8, 24)
+          local names = { "R", "G", "B" }
+          for i = 1, 3 do
+            local y = 48 + (i - 1) * 16
+            if i == rgbChannel then Font.drawCode(Theme.cursor, 16, y) end
+            Font.draw(names[i] .. " " .. ("%03d"):format(working[rgbPart][i]),
+              32, y)
+          end
+          drawBallPreview(126, 72, working)
+          Font.draw("STEP " .. rgbStep .. " (A)", 16, 104)
+          Font.draw("LEFT/RIGHT", 16, 120)
+          Font.draw("B: BACK", 96, 120)
+        end
+        G.setColor(1, 1, 1, 1)
+      end
+
+      ensureVisible()
+      return self
+    end,
+  })
+
+  mod.hooks:wrap("ui.pc.items", function(next_, game, rows)
+    local out = next_(game, rows)
+    if type(out) ~= "table" then return out end
+    for _, row in ipairs(out) do
+      if row.id == EDITOR_PC_ROW then return out end
+    end
+    local editor = {
+      id = EDITOR_PC_ROW, label = "BALL COLORS",
+      onSelect = function(_menu, liveGame)
+        openColorEditor(liveGame or game)
+      end,
+    }
+    local at = #out + 1
+    for i, row in ipairs(out) do
+      if row.id == "decoration" or row.cancel or row.id == "cancel" then
+        at = i
+        break
+      end
+    end
+    table.insert(out, at, editor)
+    return out
+  end)
+
+  -- Gen 2's bedroom item-PC menu predates generic onSelect rows. The storage
+  -- PC and every Gen 1 PC already call them directly, so this narrow adapter
+  -- is needed only when that module exists.
+  local okItemPc, Gen2ItemPc = pcall(require, "src.ui.gen2.ItemPcMenu")
+  if okItemPc and type(Gen2ItemPc) == "table"
+     and type(Gen2ItemPc.choose) == "function" then
+    Gen2ItemPc._pbcEditorOriginals = Gen2ItemPc._pbcEditorOriginals
+      or { choose = Gen2ItemPc.choose }
+    local vanillaItemPcChoose = Gen2ItemPc._pbcEditorOriginals.choose
+    Gen2ItemPc.choose = function(menu, ...)
+      local row = menu.entries and menu.entries[menu.index]
+      if row and row.id == EDITOR_PC_ROW and type(row.onSelect) == "function" then
+        row.onSelect(menu, menu.game)
+        return
+      end
+      return vanillaItemPcChoose(menu, ...)
+    end
+  end
 
   -- One warning per unknown ball id actually seen on screen, so a mod
   -- author whose ball renders in vanilla colors gets a reason instead of
@@ -914,14 +1311,14 @@ return function(mod)
   mod.events:on("pokemon.caught", function(p)
     if not (p and p.mon and p.ball) then return end
     if p.mon.caughtBall == nil then p.mon.caughtBall = p.ball end
-    if p.mon.caughtBallColor == nil and RESOLVERS[p.ball] then
+    if p.mon.caughtBallColor == nil
+       and (RESOLVERS[p.ball] or savedEntry(p.ball)) then
       local entry = resolveEntry(p.ball, { ball = p.ball, surface = "catch",
                                            battle = p.battle, mon = p.mon,
                                            game = p.game or gameRef })
       if entry then
         -- a copy, not the resolver's table: it is theirs and may be reused
-        p.mon.caughtBallColor = { body = entry.body, accent = entry.accent,
-                                  line = entry.line }
+        p.mon.caughtBallColor = entryCopy(entry)
       end
     end
     if p.mon.caughtBallPalette == nil and p.mon.caughtBallPaletteRow == nil
@@ -1042,7 +1439,9 @@ return function(mod)
         local mon = party and party[ballIndex]
         local ball = (mon and mon.caughtBall) or "POKE_BALL"
         -- the snapshot first: a dynamic ball's colour was decided at catch
-        local c = (mon and mon.caughtBallColor) or COLORS[ball]
+        local c = (mon and mon.caughtBallColor)
+          or resolveEntry(ball, { ball = ball, surface = "center",
+                                  mon = mon, game = gameRef })
         if not c then warnMissingColor(ball) end
         if c then
           local sh = PaletteFX.shader()
@@ -1068,10 +1467,11 @@ return function(mod)
   -- ------------------------------------------------------------------
   -- GOLD: the heal machine (0.1.22)
   --
-  -- Gold needs nothing from this mod for a ball THROW -- it colours those
-  -- itself from the cart's own ball_colors.asm
-  -- (src/ui/gen2/BattleState.lua:2101).  The Pokemon Center light show is
-  -- the gap: World:drawHealAnim paints every ball through ONE palette
+  -- Gold normally colours a ball THROW itself from the cart's own
+  -- ball_colors.asm (src/ui/gen2/BattleState.lua:2672). The editor now
+  -- supplies a private palette row only when the player saved an override.
+  -- The Pokemon Center remains the other gap: World:drawHealAnim paints
+  -- every ball through ONE palette
   -- (src/world/gen2/World.lua:6288-6327), so a party of six lands six
   -- identical lights whatever caught them.
   --
@@ -1141,6 +1541,35 @@ return function(mod)
       return nil
     end
 
+    -- A player override becomes a private battle-object palette row. Returning
+    -- its name from the existing ballPalette seam makes native and mod-added
+    -- balls use the same saved scheme without changing either ball record.
+    local CUSTOM_GOLD_PREFIX = "PBC_CUSTOM_"
+    local function customGoldPalette(ballId)
+      local entry = savedEntry(ballId)
+      if not entry then return nil end
+      local third = entry.line or entry.outline or entry.body
+      local name = CUSTOM_GOLD_PREFIX .. tostring(ballId)
+      local set = game.data and game.data.gen2Palettes
+        and game.data.gen2Palettes.battleObjects
+      if set then
+        set[name] = {
+          { 255, 255, 255 }, rgbCopy(entry.accent),
+          rgbCopy(entry.body), rgbCopy(third),
+        }
+        return name
+      end
+      return nil
+    end
+
+    BS2._pbcEditorOriginals = BS2._pbcEditorOriginals
+      or { ballPalette = BS2.ballPalette }
+    local vanillaGoldBallPalette = BS2._pbcEditorOriginals.ballPalette
+    BS2.ballPalette = function(self, ballId)
+      return customGoldPalette(ballId)
+        or vanillaGoldBallPalette(self, ballId)
+    end
+
     -- What to remember about a ball at the moment it catches something.
     --
     -- Two shapes come back from ballPalette.  A plain name indexes
@@ -1155,6 +1584,17 @@ return function(mod)
     goldPinFor = function(ballId, mon, battle)
       local name = nameFor(ballId, battle)
       if not name then return nil, nil end
+      -- A custom row is mutable while the player edits it. Snapshot the row
+      -- onto the caught mon so the heal machine preserves the colour that was
+      -- actually thrown, even if this ball is redesigned later.
+      if name:sub(1, #CUSTOM_GOLD_PREFIX) == CUSTOM_GOLD_PREFIX then
+        local row = rowForName(name)
+        if row then
+          local copy = {}
+          for i = 1, #row do copy[i] = rgbCopy(row[i]) end
+          return nil, copy
+        end
+      end
       if rowForName(name) then return name, nil end          -- plain: pin the name
       if okPal and Palettes and Palettes.monColors and mon and mon.species then
         local row = Palettes.monColors(game.data and game.data.gen2Palettes,
