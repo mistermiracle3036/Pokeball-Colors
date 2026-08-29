@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.40"
+  local VERSION = "0.1.41"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -452,7 +452,7 @@ return function(mod)
     LURE_BALL = true, FAST_BALL = true, MOON_BALL = true,
     LOVE_BALL = true,
   }
-  local PRESETS = {
+  local GENERIC_PRESETS = {
     { name = "CLASSIC", body = {224,72,56}, accent = {248,216,208},
       third = {0,0,0}, style = "line" },
     { name = "OCEAN", body = {48,112,224}, accent = {192,232,248},
@@ -466,6 +466,76 @@ return function(mod)
     { name = "MONO", body = {120,120,120}, accent = {232,232,232},
       third = {24,24,24}, style = "outline" },
   }
+  local BALL_PRESETS = {
+    POKE_BALL = {
+      { "CLASSIC", {224,72,56}, {248,216,208}, {0,0,0}, "line" },
+      { "PREMIER", {240,240,232}, {224,72,56}, {120,24,24}, "line" },
+      { "ROCKET", {48,48,56}, {240,48,40}, {0,0,0}, "outline" },
+    },
+    GREAT_BALL = {
+      { "CLASSIC", {56,112,216}, {208,224,248}, {0,0,0}, "line" },
+      { "COBALT", {32,72,168}, {112,200,248}, {8,24,72}, "outline" },
+      { "SCARLET", {200,48,56}, {248,200,112}, {72,8,16}, "line" },
+    },
+    ULTRA_BALL = {
+      { "GOLD RIM", {248,208,64}, {176,120,16}, {0,0,0}, "outline" },
+      { "RETRO", {232,192,40}, {40,40,40}, {24,24,24}, "outline" },
+      { "PLATINUM", {216,224,232}, {104,112,128}, {24,24,32}, "outline" },
+    },
+    MASTER_BALL = {
+      { "CLASSIC", {152,72,200}, {232,200,248}, {0,0,0}, "line" },
+      { "GALAXY", {64,40,144}, {216,120,240}, {16,8,48}, "outline" },
+      { "PEARL", {240,224,248}, {176,112,208}, {72,32,96}, "line" },
+    },
+    SAFARI_BALL = {
+      { "CLASSIC", {112,160,72}, {224,232,200}, {0,0,0}, "line" },
+      { "MARSH", {72,112,72}, {176,200,136}, {24,48,32}, "line" },
+      { "DESERT", {184,144,72}, {240,216,152}, {72,48,16}, "outline" },
+    },
+    PARK_BALL = {
+      { "PARK", {232,136,72}, {248,224,176}, {88,48,16}, "line" },
+      { "BLOOM", {208,88,144}, {248,208,224}, {88,24,56}, "outline" },
+    },
+    FRIEND_BALL = {
+      { "FRIEND", {104,184,80}, {232,216,72}, {24,72,32}, "line" },
+      { "JADE", {40,144,112}, {176,240,184}, {8,56,48}, "outline" },
+    },
+    HEAVY_BALL = {
+      { "STEEL", {144,152,160}, {216,224,232}, {48,56,64}, "outline" },
+      { "IRON", {72,80,96}, {168,176,192}, {16,24,32}, "line" },
+    },
+    LEVEL_BALL = {
+      { "LEVEL", {224,184,72}, {248,224,152}, {48,40,32}, "line" },
+      { "VOLCANO", {208,72,32}, {248,184,48}, {64,16,8}, "outline" },
+    },
+    LURE_BALL = {
+      { "LURE", {64,144,216}, {192,232,248}, {16,56,104}, "line" },
+      { "DEEP SEA", {32,72,152}, {80,208,216}, {8,24,72}, "outline" },
+    },
+    FAST_BALL = {
+      { "FAST", {232,96,48}, {248,224,72}, {96,24,8}, "line" },
+      { "FLASH", {248,208,40}, {248,248,200}, {184,48,16}, "outline" },
+    },
+    MOON_BALL = {
+      { "MOON", {80,88,120}, {216,224,232}, {24,24,48}, "outline" },
+      { "ECLIPSE", {32,32,56}, {232,192,72}, {0,0,16}, "line" },
+    },
+    LOVE_BALL = {
+      { "LOVE", {224,104,144}, {248,216,224}, {104,24,56}, "line" },
+      { "HEART", {192,48,88}, {248,176,200}, {72,8,32}, "outline" },
+    },
+  }
+
+  local function presetsForBall(id)
+    local rows = BALL_PRESETS[id]
+    if not rows then return GENERIC_PRESETS end
+    local out = {}
+    for i, row in ipairs(rows) do
+      out[i] = { name = row[1], body = row[2], accent = row[3],
+        third = row[4], style = row[5] }
+    end
+    return out
+  end
 
   local function ballCatalog(game)
     local data = game and game.data or {}
@@ -545,6 +615,7 @@ return function(mod)
       local mode, editRow = "list", 1
       local ball, working
       local presetIndex = 1
+      local presets = GENERIC_PRESETS
       local rgbPart, rgbChannel, rgbStep = "body", 1, 8
       local self = { game = game, isOpaque = true, isModOptions = true }
 
@@ -559,11 +630,12 @@ return function(mod)
         ball = balls[selected]
         if not ball then return end
         working = editableEntry(ball.id)
+        presets, presetIndex = presetsForBall(ball.id), 1
         editRow, mode = 1, "edit"
       end
 
       local function applyPreset()
-        local p = PRESETS[presetIndex]
+        local p = presets[presetIndex]
         working = {
           body = rgbCopy(p.body), accent = rgbCopy(p.accent),
           third = rgbCopy(p.third), style = p.style,
@@ -621,7 +693,7 @@ return function(mod)
         elseif input:wasPressed("left") or input:wasPressed("right") then
           local direction = input:wasPressed("right") and 1 or -1
           if editRow == 1 then
-            presetIndex = ((presetIndex - 1 + direction) % #PRESETS) + 1
+            presetIndex = ((presetIndex - 1 + direction) % #presets) + 1
             applyPreset()
           elseif editRow == 2 then
             working.style = working.style == "line" and "outline" or "line"
@@ -723,7 +795,7 @@ return function(mod)
             if i == editRow then Font.drawCode(Theme.cursor, 8, y) end
             Font.draw(label(row, 9), 16, y)
           end
-          Font.draw(label(PRESETS[presetIndex].name, 8), 96, 24)
+          Font.draw(label(presets[presetIndex].name, 8), 96, 24)
           Font.draw(working.style == "line" and "BAND" or "OUTLINE", 96, 104)
           drawBallPreview(126, 72, working)
           Font.draw("A: SELECT", 16, 120)

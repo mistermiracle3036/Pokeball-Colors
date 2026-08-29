@@ -4,6 +4,24 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.41
+
+**Updating from 0.1.33?** You can redesign every Poke Ball from the in-game
+PC. This release also includes the Ultra Ball, Elm starter display, and
+coloured Pokemon previews added in the intervening test builds.
+
+- **Each native ball now has presets designed for that ball.** Poke, Great,
+  Ultra, Master, Safari, and the Gold-family specialty balls get distinct
+  alternatives instead of sharing one generic palette list.
+- Ultra Ball includes both established designs: the current two-gold ball
+  with a black rim and the earlier gold-and-near-black Retro look.
+- Mod-added balls whose authors have not supplied tailored presets retain the
+  general Classic, Ocean, Forest, Gold, Purple, and Mono choices.
+- Fixed in 0.1.40: editor previews retain their actual RGB colours after the
+  final Advanced-colour screen pass.
+- The PC editor retains full RGB control, band/outline selection, restoration,
+  cross-generation saved colours, mod-ball support, and Kecleon behaviour.
+
 ## 0.1.40
 
 **Updating from 0.1.33?** You can redesign every Poke Ball from the in-game
