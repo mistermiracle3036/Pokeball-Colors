@@ -4,6 +4,24 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.44
+
+**Updating from 0.1.33?** You can redesign every Poke Ball from the in-game
+PC, in Red, Blue and Yellow with Advanced colours on and in Gold, Silver and
+Crystal. This release also includes the Ultra Ball redesign, the Elm starter
+display, and coloured Pokemon previews added in the intervening test builds.
+
+- **The preview is now the real ball.** It draws the actual thrown sprite in
+  your chosen colours instead of an approximation of it, so what you pick is
+  what you get.
+- **Fixed: the STYLE row could claim BAND when the ball would not have one.**
+  In Gold, Silver and Crystal the third colour always paints the outline --
+  those games have no banded ball art -- and on Gen 1 it paints nothing at
+  all when the black band/outline option is off. The row now reports what the
+  ball will actually do, and it no longer offers a choice on the games where
+  the choice has no effect.
+- Everything from 0.1.43 below still applies.
+
 ## 0.1.43
 
 **Updating from 0.1.33?** You can redesign every Poke Ball from the in-game

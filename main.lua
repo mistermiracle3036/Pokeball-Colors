@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.43"
+  local VERSION = "0.1.44"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -91,6 +91,11 @@ return function(mod)
   local BattleState = require("src.battle.BattleState")
   local AnimPlayer = require("src.battle.AnimPlayer")
   local Runtime = require("src.mods.Runtime")
+  -- Resolves a sheet path for the editor preview.  A plain require, not a
+  -- guarded one: Assets is shared by both generations, and reading it as a
+  -- bare value is what gen2check cannot follow -- it degrades the site to an
+  -- "unresolved:" note, which would hide the next REAL finding here.
+  local Assets = require("src.render.Assets")
 
   -- Forward declarations.  Lua compiles a name used before its `local` as a
   -- GLOBAL, which is nil at runtime and fails silently -- the trap this
@@ -100,6 +105,11 @@ return function(mod)
   local activeBattle      -- the BattleState whose ball chain is running
   local gameRef           -- the live game, from game.ready
   local goldPinFor        -- Gold only: fn(ball, mon, battle) -> name, row
+  local previewBallArt    -- fn(game, entry) -> Image of the REAL ball, or nil
+                          -- (defined below BAND_TILES, whose seam coordinates
+                          -- it reuses; the editor screen is registered above
+                          -- that point, so it has to be an upvalue like
+                          -- goldPinFor rather than a local at the use site)
   local throwCache        -- resolver result and saved-override cache per throw
 
   -- { body = the ball's main color, accent = its smaller highlight },
@@ -600,6 +610,15 @@ return function(mod)
     saveEntry(id, entryFromWorking(w), w.style)
   end
 
+  -- Capability, not a version name -- the same test the Gold block at the
+  -- bottom of this file uses.  It matters to the editor because the STYLE
+  -- row is meaningless on Gen 2: Gold's ball art has no re-indexed variant,
+  -- so slot 3 is the outline whatever the row says.
+  local function isGen2(game)
+    game = game or gameRef or mod.game
+    return not not (game and game.data and game.data.gen2Palettes)
+  end
+
   local function openColorEditor(game)
     game = game or gameRef or mod.game
     if not (game and game.stack) then return false end
@@ -695,14 +714,14 @@ return function(mod)
           if editRow == 1 then
             presetIndex = ((presetIndex - 1 + direction) % #presets) + 1
             applyPreset()
-          elseif editRow == 2 then
+          elseif editRow == 2 and not isGen2(self.game) then
             working.style = working.style == "line" and "outline" or "line"
             persistWorking(ball.id, working)
           end
         elseif input:wasPressed("a") then
           if editRow == 1 then
             applyPreset()
-          elseif editRow == 2 then
+          elseif editRow == 2 and not isGen2(self.game) then
             working.style = working.style == "line" and "outline" or "line"
             persistWorking(ball.id, working)
           elseif editRow >= 3 and editRow <= 5 then
@@ -737,7 +756,7 @@ return function(mod)
         -- Binding a Canvas does NOT reset the transform or the scissor, and
         -- Gen 2 draws every state inside Playfield.push (Playfield.lua:58-66),
         -- which sets BOTH: a translate to the letterbox origin and a scissor
-        -- in SCREEN space.  Inherited into a 48x48 canvas that put the circles
+        -- in SCREEN space.  Inherited into a 48x48 canvas that put the drawing
         -- outside it and clipped whatever was left, so on Gold/Crystal the
         -- preview came out fully blank.  Gen 1 never showed it because its
         -- states draw into Renderer's 160x144 UI canvas at identity.  The
@@ -748,32 +767,44 @@ return function(mod)
         G.clear(0, 0, 0, 0)
         local previousShader = G.getShader()
         G.setShader()
-        local function set(c) G.setColor(c[1] / 255, c[2] / 255, c[3] / 255, 1) end
+        G.setColor(1, 1, 1, 1)
 
-        -- Laid out to match what the three editable colours actually paint in
-        -- the ball art, so the swatch predicts the throw instead of merely
-        -- listing the colours.  The DMG indices are:
-        --   index 2 -> body   : the upper body mass
-        --   index 1 -> accent : the lower crescent AND the centre button
-        --   index 3 -> third  : the seam band, or the perimeter ring
-        -- Only ONE of seam/ring is the third colour -- whichever the STYLE row
-        -- selects -- and the other stays black, exactly as the re-indexed
-        -- BAND_TILES art does it.  The old swatch drew an off-centre highlight
-        -- blob that corresponded to nothing on the ball.
-        local rim  = (w.style == "outline") and w.third or BLACK
-        local seam = (w.style == "line") and w.third or BLACK
-        set(rim)
-        G.circle("fill", 24, 24, 22)                            -- perimeter
-        set(w.accent)
-        G.circle("fill", 24, 24, 20)                            -- lower half
-        set(w.body)
-        G.arc("fill", "pie", 24, 24, 20, math.pi, 2 * math.pi)  -- upper mass
-        set(seam)
-        G.rectangle("fill", 4, 21, 40, 5)                       -- the seam
-        set(rim)
-        G.circle("fill", 24, 24, 6)                             -- button ring
-        set(w.accent)
-        G.circle("fill", 24, 24, 4)                             -- button face
+        -- The REAL sprite, whenever the sheet can be read.  That is the whole
+        -- point of the swatch: someone picking colours should be looking at
+        -- the ball that will be thrown.
+        local art = previewBallArt and previewBallArt(
+          self.game or gameRef, w, mod.options:get("ball_band"),
+          isGen2(self.game))
+        if art then
+          art:setFilter("nearest", "nearest")
+          -- 16x16 art at 3x.  The ball's own pixels occupy x 2..13, y 4..15
+          -- of that frame, so shifting by -(2*3)+6 = 0 and -(4*3)+6 = -6
+          -- lands its 12x12 box centred in the 48x48 canvas.
+          G.draw(art, 0, -6, 0, 3, 3)
+        else
+          -- FALLBACK only: no cache yet, an unreadable sheet path, a headless
+          -- run.  An approximation of the ball in the same three regions --
+          -- close enough to keep the editor usable, and never what the player
+          -- sees when the art is available.
+          local function set(c)
+            G.setColor(c[1] / 255, c[2] / 255, c[3] / 255, 1)
+          end
+          local rim  = (w.style == "outline") and w.third or BLACK
+          local seam = (w.style == "line") and w.third or BLACK
+          set(rim)
+          G.circle("fill", 24, 24, 22)                            -- perimeter
+          set(w.accent)
+          G.circle("fill", 24, 24, 20)                            -- lower half
+          set(w.body)
+          G.arc("fill", "pie", 24, 24, 20, math.pi, 2 * math.pi)  -- upper mass
+          set(seam)
+          G.rectangle("fill", 4, 21, 40, 5)                       -- the seam
+          set(rim)
+          G.circle("fill", 24, 24, 6)                             -- button ring
+          set(w.accent)
+          G.circle("fill", 24, 24, 4)                             -- button face
+        end
+
         G.setShader(previousShader)
         G.pop()
 
@@ -829,7 +860,21 @@ return function(mod)
             Font.draw(label(row, 9), 16, y)
           end
           Font.draw(label(presets[presetIndex].name, 8), 96, 24)
-          Font.draw(working.style == "line" and "BAND" or "OUTLINE", 96, 104)
+          -- Report the region that will actually be painted, not the stored
+          -- preference.  Gold's ball art has no re-indexed variant, so slot 3
+          -- is always the outline there; and on Gen 1 with the band option
+          -- off, thirdColor returns nil and slot 3 falls back to the body.
+          -- Showing BAND in either case is what made the screenshot disagree
+          -- with the thrown ball.
+          local styleLabel
+          if isGen2(self.game) then
+            styleLabel = "OUTLINE"
+          elseif not mod.options:get("ball_band") then
+            styleLabel = "OFF"
+          else
+            styleLabel = working.style == "line" and "BAND" or "OUTLINE"
+          end
+          Font.draw(styleLabel, 96, 104)
           drawBallPreview(126, 72, working)
           Font.draw("A: SELECT", 16, 120)
           Font.draw("B: BACK", 88, 120)
@@ -1021,6 +1066,172 @@ return function(mod)
                       {2,6}, {0,7} },
              line = { {2,0}, {3,0}, {1,1}, {2,1}, {0,2}, {1,2} } },
   }
+
+  -- ------------------------------------------------------------------
+  -- THE REAL BALL, for the editor preview.
+  --
+  -- The upright resting ball is two 8x8 tiles stacked, with the right half
+  -- an X-mirror of the left.  The art is byte-identical on both
+  -- generations -- verified against the developer's own imported red/ and
+  -- gold/ caches on 2026-08-29 -- so one builder serves both; only the
+  -- sheet lookup differs:
+  --
+  --   Gen 1  battle_anims.tilesheets[0], tiles 2 (top) and 18 (bottom),
+  --          which is what the BAND_TILES note above calls the upright ball.
+  --   Gen 2  battle_anims.gfx.BATTLE_ANIM_GFX_POKE_BALL, tiles 0 and 1.
+  --          That is BATTLE_ANIM_OAMSET_0A (x -8/0, y -8/0, attr 32 =
+  --          X-flip), which FRAMESET_POKE_BALL_4 plays as its single
+  --          resting frame.
+  --
+  -- Only the tile INDICES are in this repo.  The pixels are read from the
+  -- player's own imported cache every session, exactly as bandSheet does,
+  -- so no ROM-derived art enters the repo or the zip.
+  --
+  -- Colours are BAKED into a 16x16 image rather than sent through a
+  -- palette shader.  The preview is drawn with the shader deliberately
+  -- cleared (see drawBallPreview), and baking is the one form that
+  -- survives both generations' very different present passes unchanged.
+  --
+  -- Which region the third colour paints is decided HERE, from the same
+  -- inputs the throw uses, so the swatch cannot disagree with the ball:
+  --   * Gen 2 has no re-indexed art -- slot 3 is the outline, always.
+  --   * Gen 1 with the band option ON and a `line` colour: the seam
+  --     becomes the third colour and the outline joins the body, which is
+  --     exactly what the BAND_TILES re-index does.
+  --   * Gen 1 with an `outline` colour: slot 3 is the outline.
+  --   * Band option OFF: slot 3 falls back to the body, matching
+  --     thirdColor returning nil.
+  -- ------------------------------------------------------------------
+  local BALL_ART_W, BALL_ART_H = 16, 16
+  -- ball pixels occupy x 2..13, y 4..15 of that 16x16 once mirrored
+  local BALL_ART_BOX = { x = 2, y = 4, w = 12, h = 12 }
+
+  local ballSrc      -- { top = grid, bottom = grid } | false
+  local ballArtCache -- key -> Image
+
+  -- grey value -> DMG index.  255 is index 0, which the OAM layer draws as
+  -- transparent, so it stays transparent here too.
+  local function shadeIndex(v)
+    if v > 212 then return 0 end
+    if v > 127 then return 1 end
+    if v > 42  then return 2 end
+    return 3
+  end
+
+  local function ballSource(game)
+    if ballSrc ~= nil then return ballSrc or nil end
+    ballSrc = false
+    local anims = game and game.data and game.data.battle_anims
+    if not (anims and love and love.image) then return nil end
+    local ok, res = pcall(function()
+      local path, topTile, botTile
+      local gfx = anims.gfx and anims.gfx.BATTLE_ANIM_GFX_POKE_BALL
+      if gfx and gfx.image then
+        path, topTile, botTile = gfx.image, 0, 1
+      else
+        local sheet = anims.tilesheets and anims.tilesheets[0]
+        path, topTile, botTile = sheet and sheet.path, 2, 18
+      end
+      if not path then return nil end
+      -- Assets.resolve turns the Gen 2 cache's relative asset path into a
+      -- real one; the Gen 1 tilesheet path is already absolute and passes
+      -- through.  Falls back to a raw read if resolution ever fails.
+      local okData, id = pcall(Assets.imageData, path)
+      if not okData or not id then id = love.image.newImageData(path) end
+      local cols = math.floor(id:getWidth() / 8)
+      local function grid(tile)
+        local tx, ty = (tile % cols) * 8, math.floor(tile / cols) * 8
+        local out = {}
+        for y = 0, 7 do
+          for x = 0, 7 do
+            local r = id:getPixel(tx + x, ty + y)
+            out[y * 8 + x + 1] = shadeIndex(math.floor(r * 255 + 0.5))
+          end
+        end
+        return out
+      end
+      return { top = grid(topTile), bottom = grid(botTile) }
+    end)
+    if not (ok and res) then
+      mod.log:warn("ball preview: real art unavailable (%s)", tostring(res))
+      return nil
+    end
+    ballSrc = res
+    return res
+  end
+
+  -- tile-local seam pixels, taken from the one table that already knows
+  -- them rather than restated here
+  local function seamSet(tile)
+    local out = {}
+    for _, pix in ipairs(BAND_TILES[tile] and BAND_TILES[tile].line or {}) do
+      out[pix[2] * 8 + pix[1] + 1] = true
+    end
+    return out
+  end
+
+  previewBallArt = function(game, entry, bandOn, gen2)
+    local src = ballSource(game)
+    if not (src and entry and entry.body and entry.accent) then return nil end
+    local third = entry.third or entry.line or entry.outline
+    -- which region slot 3 paints, and whether the seam is repainted
+    local seamIsThird = (not gen2) and bandOn and entry.style ~= "outline"
+    local outlineColor
+    if seamIsThird then
+      outlineColor = entry.body                     -- outline joins the body
+    elseif gen2 or bandOn then
+      outlineColor = third or entry.body
+    else
+      outlineColor = entry.body                     -- thirdColor returns nil
+    end
+    local seamColor = seamIsThird and third or nil
+
+    local key = table.concat({
+      tostring(entry.body[1]), entry.body[2], entry.body[3],
+      entry.accent[1], entry.accent[2], entry.accent[3],
+      third and third[1] or "-", third and third[2] or "-",
+      third and third[3] or "-",
+      seamIsThird and "S" or "O", gen2 and "2" or "1", bandOn and "B" or "n",
+    }, ",")
+    ballArtCache = ballArtCache or {}
+    if ballArtCache[key] then return ballArtCache[key] end
+
+    local seamTop = seamSet((gen2 and 0) or 2)
+    local seamBot = seamSet((gen2 and 1) or 18)
+    local ok, image = pcall(function()
+      local id = love.image.newImageData(BALL_ART_W, BALL_ART_H)
+      local function put(x, y, c)
+        if not c then return end
+        id:setPixel(x, y, c[1] / 255, c[2] / 255, c[3] / 255, 1)
+      end
+      for half = 0, 1 do
+        for row = 0, 1 do
+          local grid = row == 0 and src.top or src.bottom
+          local seam = row == 0 and seamTop or seamBot
+          for y = 0, 7 do
+            for x = 0, 7 do
+              local i = grid[y * 8 + x + 1]
+              local c
+              if i == 1 then c = entry.accent
+              elseif i == 2 then c = (seam[y * 8 + x + 1] and seamColor)
+                                     or entry.body
+              elseif i == 3 then c = outlineColor end
+              -- half 1 is the X-mirror the OAM set draws with attr 32
+              local dx = half == 0 and x or (BALL_ART_W - 1 - x)
+              put(dx, row * 8 + y, c)
+            end
+          end
+        end
+      end
+      return love.graphics.newImage(id)
+    end)
+    if not (ok and image) then
+      mod.log:warn("ball preview: bake failed (%s)", tostring(image))
+      return nil
+    end
+    ballArtCache[key] = image
+    return image
+  end
 
   -- the generated sheets are GB grays: index 1 = 170, 2 = 85, 3 = 0
   -- (tools/extract/gfx.py GB_SHADES).  LOVE 11 takes 0-1 floats.
