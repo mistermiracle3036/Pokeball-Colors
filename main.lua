@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.46"
+  local VERSION = "0.1.47"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -139,16 +139,24 @@ return function(mod)
   local BLACK = { 0, 0, 0 }
   local COLORS = {
     -- native
+    -- Every native ball defaults to `outline` (the black rim on the vanilla
+    -- art) rather than `line` (the re-indexed seam band).  Developer call,
+    -- 2026-08-29: the band should be something a player opts into per ball
+    -- from the editor, not what RESTORE DEFAULT hands back.  It also makes
+    -- Gen 1 agree with Gen 2, where slot 3 is the outline and no banded art
+    -- exists at all.  The whole `line` path -- BAND_TILES, bandSheet, the
+    -- sheetImage swap -- is untouched and still reached by any ball whose
+    -- saved entry chooses BAND.
     POKE_BALL   = { body = { 224,  72,  56 }, accent = { 248, 216, 208 },
-                    line = BLACK },
+                    outline = BLACK },
     GREAT_BALL  = { body = {  56, 112, 216 }, accent = { 208, 224, 248 },
-                    line = BLACK },
+                    outline = BLACK },
     ULTRA_BALL  = { body = { 248, 208,  64 }, accent = { 176, 120,  16 },
                     outline = BLACK },
     MASTER_BALL = { body = { 152,  72, 200 }, accent = { 232, 200, 248 },
-                    line = BLACK },
+                    outline = BLACK },
     SAFARI_BALL = { body = { 112, 160,  72 }, accent = { 224, 232, 200 },
-                    line = BLACK },
+                    outline = BLACK },
     -- custom_pokeballs (harmless entries if that mod is absent)
     QUICK_BALL  = { body = { 232, 216,  56 }, accent = {  40,  88, 168 } },
     TIMER_BALL  = { body = { 232, 232, 232 }, accent = { 192,  56,  48 } },
@@ -586,6 +594,17 @@ return function(mod)
     return out
   end
 
+  -- One [ERRS] line per ball that cannot be seeded, once each.  Silent here
+  -- means "looks like a red Poke Ball for no stated reason".
+  local seedFailed = {}
+  local function seedFail(fmt, ...)
+    local msg = "editor seed: " .. string.format(fmt, ...)
+    if seedFailed[msg] then return end
+    seedFailed[msg] = true
+    mod.log:warn("%s", msg)
+    Runtime.reportError("pokeball_colors", msg)
+  end
+
   local function editableEntry(id)
     local saved = savedOverrides()[id]
     local base = savedEntry(id) or resolveEntry(id, {
@@ -613,6 +632,16 @@ return function(mod)
           accent = rgbCopy(row[2]), body = rgbCopy(row[3]),
           outline = rgbCopy(row[4]),
         }
+      elseif not base then
+        -- Report rather than silently show red.  A mod ball with no
+        -- resolvable palette is indistinguishable on screen from one whose
+        -- owner simply chose red, which is what made CATALYST BALL and
+        -- ORIGIN BALL unexplainable from a screenshot (device, 0.1.46).
+        -- Names which of the two it is: no name came back at all, or a name
+        -- came back with no row behind it.
+        seedFail("%s: %s", tostring(id),
+          name and ("palette " .. tostring(name) .. " has no row")
+            or "no palette name")
       end
     end
     base = base or COLORS.POKE_BALL
@@ -670,11 +699,51 @@ return function(mod)
         end
       end
 
+      -- The STYLE row exists only where it can do something.  Gold, Silver
+      -- and Crystal have no re-indexed ball art, so slot 3 is the outline
+      -- whatever the row says -- 0.1.44 made it merely inert, and the
+      -- developer's call on 0.1.46 was that an inert row should not be on
+      -- screen at all.  Every other row shifts up by one there.
+      local function editRows()
+        if isGen2(self.game) then
+          return { "PRESET", "BODY", "ACCENT", "THIRD", "RESTORE DEFAULT",
+                   "DONE" }
+        end
+        return { "PRESET", "STYLE", "BODY", "ACCENT", "THIRD",
+                 "RESTORE DEFAULT", "DONE" }
+      end
+
+      -- What the visible row at `i` means, so the handlers below never have
+      -- to know which layout is on screen.
+      local function rowKind(i)
+        return editRows()[i]
+      end
+
+      -- Does the working entry match one of the presets?  If it does not,
+      -- the PRESET row must not claim it does: opening a ball seeds the
+      -- editor from that ball's OWN colours and applies no preset, so
+      -- showing "CLASSIC" there was a label that described nothing on
+      -- screen -- and on a ball whose own colours happened to be reddish it
+      -- read as "the default is wrong" (device, 0.1.46).
+      local function sameRgb(a, b)
+        return a and b and a[1] == b[1] and a[2] == b[2] and a[3] == b[3]
+      end
+      local function matchingPreset(w, list)
+        for i, p in ipairs(list or {}) do
+          if sameRgb(p.body, w.body) and sameRgb(p.accent, w.accent)
+             and sameRgb(p.third, w.third) then
+            return i
+          end
+        end
+        return 0                        -- 0 == "not a preset"; shows DEFAULT
+      end
+
       local function beginEdit()
         ball = balls[selected]
         if not ball then return end
         working = editableEntry(ball.id)
-        presets, presetIndex = presetsForBall(ball.id), 1
+        presets = presetsForBall(ball.id)
+        presetIndex = matchingPreset(working, presets)
         editRow, mode = 1, "edit"
       end
 
@@ -730,32 +799,47 @@ return function(mod)
           return
         end
 
+        -- Everything below dispatches on the row's NAME, never its number,
+        -- so the Gen 2 layout (no STYLE row) needs no parallel index math.
+        local rows = editRows()
+        local function toggleStyle()
+          working.style = working.style == "line" and "outline" or "line"
+          persistWorking(ball.id, working)
+        end
         if input:wasPressed("up") then
-          editRow = editRow > 1 and editRow - 1 or 7
+          editRow = editRow > 1 and editRow - 1 or #rows
         elseif input:wasPressed("down") then
-          editRow = editRow < 7 and editRow + 1 or 1
+          editRow = editRow < #rows and editRow + 1 or 1
         elseif input:wasPressed("left") or input:wasPressed("right") then
           local direction = input:wasPressed("right") and 1 or -1
-          if editRow == 1 then
-            presetIndex = ((presetIndex - 1 + direction) % #presets) + 1
+          local kind = rowKind(editRow)
+          if kind == "PRESET" and #presets > 0 then
+            -- presetIndex 0 means "these are the ball's own colours, not a
+            -- preset"; stepping off it enters the list at either end.
+            if presetIndex == 0 then
+              presetIndex = direction > 0 and 1 or #presets
+            else
+              presetIndex = ((presetIndex - 1 + direction) % #presets) + 1
+            end
             applyPreset()
-          elseif editRow == 2 and not isGen2(self.game) then
-            working.style = working.style == "line" and "outline" or "line"
-            persistWorking(ball.id, working)
+          elseif kind == "STYLE" then
+            toggleStyle()
           end
         elseif input:wasPressed("a") then
-          if editRow == 1 then
+          local kind = rowKind(editRow)
+          if kind == "PRESET" then
+            if presetIndex == 0 then presetIndex = 1 end
             applyPreset()
-          elseif editRow == 2 and not isGen2(self.game) then
-            working.style = working.style == "line" and "outline" or "line"
-            persistWorking(ball.id, working)
-          elseif editRow >= 3 and editRow <= 5 then
-            rgbPart = ({ "body", "accent", "third" })[editRow - 2]
+          elseif kind == "STYLE" then
+            toggleStyle()
+          elseif kind == "BODY" or kind == "ACCENT" or kind == "THIRD" then
+            rgbPart = kind:lower()
             rgbChannel, mode = 1, "rgb"
-          elseif editRow == 6 then
+          elseif kind == "RESTORE DEFAULT" then
             clearSavedEntry(ball.id)
             working = editableEntry(ball.id)
-          elseif editRow == 7 then
+            presetIndex = matchingPreset(working, presets)
+          elseif kind == "DONE" then
             mode = "list"
           end
         elseif input:wasPressed("b") then
@@ -858,7 +942,13 @@ return function(mod)
       --   0x71 left arrow, GOLD ONLY -- red has no left arrow at any code
       -- So the left arrow is drawn only where it exists, and the row still
       -- reads as adjustable on Gen 1 from the right arrow alone.
-      local LEFT_ARROW_GEN2 = 0x71
+      -- RIGHT ARROW ONLY.  0.1.46 also drew a left arrow at 0x71, which the
+      -- gold charmap does list as a left arrow -- but Font.drawCode indexes
+      -- the MAIN glyph sheet, and 0x71 does not live there, so it came out
+      -- as an unrelated symbol next to every preset name (device, 0.1.46).
+      -- Theme.cursor (0xED) is the only arrow proven to draw correctly on
+      -- both generations: it is the menu cursor itself.  One arrow still
+      -- reads as "this row moves".
       local CYCLER_RIGHT = 136          -- last column inside the frame
 
       -- rightEdge lets the RGB screen keep its values clear of the ball,
@@ -871,9 +961,6 @@ return function(mod)
         Font.draw(text, vx, y)
         if not changeable then return end
         Font.drawCode(Theme.cursor, rightEdge, y)
-        if isGen2(self.game) then
-          Font.drawCode(LEFT_ARROW_GEN2, vx - 8, y)
-        end
       end
 
       local function label(s, n)
@@ -903,32 +990,31 @@ return function(mod)
           Font.draw("B: EXIT", 88, 120)
         elseif mode == "edit" then
           Font.draw(label(ball and ball.label, 18), 8, 8)
-          local rows = {
-            "PRESET", "STYLE",
-            "BODY", "ACCENT", "THIRD", "RESTORE DEFAULT", "DONE",
-          }
+          local rows = editRows()
+          local styleRowY
           for i, row in ipairs(rows) do
             local y = 24 + (i - 1) * 8
             if i == editRow then Font.drawCode(Theme.cursor, 8, y) end
             Font.draw(label(row, 9), 16, y)
+            if row == "STYLE" then styleRowY = y end
           end
-          drawCycler(label(presets[presetIndex].name, 8), 24, #presets > 1)
-          -- Report the region that will actually be painted, not the stored
-          -- preference.  Gold's ball art has no re-indexed variant, so slot 3
-          -- is always the outline there; and on Gen 1 with the band option
-          -- off, thirdColor returns nil and slot 3 falls back to the body.
-          -- Showing BAND in either case is what made the screenshot disagree
-          -- with the thrown ball.
-          local styleLabel
-          if isGen2(self.game) then
-            styleLabel = "OUTLINE"
-          elseif not mod.options:get("ball_band") then
-            styleLabel = "OFF"
-          else
-            styleLabel = working.style == "line" and "BAND" or "OUTLINE"
+          -- DEFAULT, not a preset name, when the colours on screen are the
+          -- ball's own.  Opening a ball applies no preset, so naming one
+          -- there described nothing the player could see.
+          local presetLabel = presetIndex > 0 and presets[presetIndex]
+            and presets[presetIndex].name or "DEFAULT"
+          drawCycler(label(presetLabel, 8), 24, #presets > 0)
+          -- Only Gen 1 still has a STYLE row, and it reports the region that
+          -- will ACTUALLY be painted: with the band option off, thirdColor
+          -- returns nil and slot 3 falls back to the body, so neither BAND
+          -- nor OUTLINE would be true.
+          if styleRowY then
+            local bandOn = mod.options:get("ball_band")
+            drawCycler(
+              (not bandOn) and "OFF"
+                or (working.style == "line" and "BAND" or "OUTLINE"),
+              104, bandOn)
           end
-          drawCycler(styleLabel, 104,
-            not isGen2(self.game) and mod.options:get("ball_band"))
           drawBallPreview(120, 60, working)
           Font.draw("A: SELECT", 16, 120)
           Font.draw("B: BACK", 88, 120)

@@ -4,6 +4,28 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.47
+
+**Updating from 0.1.33?** You can redesign every Poke Ball from the in-game
+PC, in Red, Blue and Yellow with Advanced colours on and in Gold, Silver and
+Crystal. This release also includes the Ultra Ball redesign, the Elm starter
+display, and coloured Pokemon previews added in the intervening test builds.
+
+- **Every ball now comes back with a black outline, not a black centre band,
+  when you RESTORE DEFAULT.** The band is still available -- pick BAND on the
+  STYLE row for any ball you want it on -- but it is no longer what a ball
+  reverts to.
+- **The STYLE row is gone in Gold, Silver and Crystal.** Those games have no
+  banded ball art, so the row could never have done anything there.
+- **Fixed: the stray symbol next to the preset name.** The left arrow added
+  last build was not a real glyph on these games.
+- **The preset name no longer claims a preset you have not chosen.** Opening a
+  ball shows its own colours and applies no preset, so it now reads DEFAULT
+  unless the colours really do match one.
+- If a ball added by another mod cannot be read, the mod now says which ball
+  and why on the mod manager's error screen instead of quietly showing red.
+- Everything from 0.1.46 below still applies.
+
 ## 0.1.46
 
 **Updating from 0.1.33?** You can redesign every Poke Ball from the in-game
