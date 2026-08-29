@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.44"
+  local VERSION = "0.1.45"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -1106,6 +1106,19 @@ return function(mod)
   -- ball pixels occupy x 2..13, y 4..15 of that 16x16 once mirrored
   local BALL_ART_BOX = { x = 2, y = 4, w = 12, h = 12 }
 
+  -- Failures here report to [ERRS], not just mod.log: the developer tests on
+  -- iOS where there is no console, and a failed art load looks exactly like
+  -- "the update did nothing" -- which is precisely how 0.1.44's wrong data
+  -- key survived a device round trip.  Same reasoning as bandFail below.
+  local artFailed = false
+  local function artFail(fmt, ...)
+    if artFailed then return end             -- once, not per frame
+    artFailed = true
+    local msg = string.format(fmt, ...)
+    mod.log:warn("%s", msg)
+    Runtime.reportError("pokeball_colors", msg)
+  end
+
   local ballSrc      -- { top = grid, bottom = grid } | false
   local ballArtCache -- key -> Image
 
@@ -1121,8 +1134,17 @@ return function(mod)
   local function ballSource(game)
     if ballSrc ~= nil then return ballSrc or nil end
     ballSrc = false
-    local anims = game and game.data and game.data.battle_anims
-    if not (anims and love and love.image) then return nil end
+    -- The two generations file this table under DIFFERENT keys, which is
+    -- the whole reason 0.1.44's preview silently fell back to primitives on
+    -- Gold: Gen 1 is game.data.battle_anims (BattleState.lua:670 hands it
+    -- straight to AnimPlayer.new), Gen 2 is game.data.gen2BattleAnims
+    -- (Game2.lua:939, read as self.anims at gen2/BattleState.lua:293).
+    local data = game and game.data
+    local anims = data and (data.gen2BattleAnims or data.battle_anims)
+    if not (anims and love and love.image) then
+      artFail("ball preview: no battle_anims table on this boot")
+      return nil
+    end
     local ok, res = pcall(function()
       local path, topTile, botTile
       local gfx = anims.gfx and anims.gfx.BATTLE_ANIM_GFX_POKE_BALL
@@ -1153,7 +1175,7 @@ return function(mod)
       return { top = grid(topTile), bottom = grid(botTile) }
     end)
     if not (ok and res) then
-      mod.log:warn("ball preview: real art unavailable (%s)", tostring(res))
+      artFail("ball preview: art read failed (%s)", tostring(res))
       return nil
     end
     ballSrc = res
@@ -1226,7 +1248,7 @@ return function(mod)
       return love.graphics.newImage(id)
     end)
     if not (ok and image) then
-      mod.log:warn("ball preview: bake failed (%s)", tostring(image))
+      artFail("ball preview: bake failed (%s)", tostring(image))
       return nil
     end
     ballArtCache[key] = image

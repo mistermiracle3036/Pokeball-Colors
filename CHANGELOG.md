@@ -4,6 +4,21 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.45
+
+**Updating from 0.1.33?** You can redesign every Poke Ball from the in-game
+PC, in Red, Blue and Yellow with Advanced colours on and in Gold, Silver and
+Crystal. This release also includes the Ultra Ball redesign, the Elm starter
+display, and coloured Pokemon previews added in the intervening test builds.
+
+- **Fixed: the real-ball preview added in 0.1.44 never actually appeared.**
+  It looked up the animation data under the wrong name in Gold, Silver and
+  Crystal, so it quietly fell back to the old approximate swatch. The preview
+  now shows the actual thrown sprite, as intended.
+- If the sprite ever cannot be loaded, the mod now says so on the mod
+  manager's error screen instead of silently showing the old swatch.
+- Everything from 0.1.44 below still applies.
+
 ## 0.1.44
 
 **Updating from 0.1.33?** You can redesign every Poke Ball from the in-game
