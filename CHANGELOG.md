@@ -4,6 +4,18 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.54
+
+**Updating from 0.1.33?** You can redesign every Poke Ball from the in-game
+PC, in Red, Blue and Yellow with Advanced colours on and in Gold, Silver and
+Crystal. This release also includes the Ultra Ball redesign, the Elm starter
+display, and coloured Pokemon previews added in the intervening test builds.
+
+- The recolour setting is now called **"Recolor balls in GEN 2 games"**. It
+  always covered Gold, Silver and Crystal alike; naming only Gold made it look
+  as though the other two were left out.
+- Everything from 0.1.53 below still applies.
+
 ## 0.1.53
 
 **Updating from 0.1.33?** You can redesign every Poke Ball from the in-game

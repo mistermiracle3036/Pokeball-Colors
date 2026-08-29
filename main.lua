@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.53"
+  local VERSION = "0.1.54"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -82,7 +82,10 @@ return function(mod)
     { key = "ball_art_takeover", type = "toggle",
       label = "My ball colors over other mods", default = false },
     { key = "gen2_recolor", type = "toggle",
-      label = "Recolor balls in GOLD family", default = true },
+      -- "GEN 2", not "GOLD family": this covers Gold, Silver AND Crystal,
+      -- and naming one of the three in a setting that governs all of them
+      -- reads as though the other two are excluded.
+      label = "Recolor balls in GEN 2 games", default = true },
     { key = "editor_mod_balls", type = "toggle",
       label = "Show mod balls in color editor", default = true },
     { key = "dev_all_balls_in_marts", type = "toggle",
