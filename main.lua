@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.39"
+  local VERSION = "0.1.40"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -647,32 +647,44 @@ return function(mod)
         end
       end
 
+      local previewCanvas
+
       local function drawBallPreview(x, y, w)
         if not w then return end
         local G = love.graphics
-        -- Menu chrome can leave the active GB/GBC palette shader installed.
-        -- That shader treats a pixel's RED channel as a 2bpp shade index, so
-        -- true RGB primitives were quantized through the menu palette: Forest
-        -- and Ocean both appeared blue. Draw this true-colour preview plain,
-        -- then restore the caller's shader for the rest of the screen.
+        previewCanvas = previewCanvas or G.newCanvas(48, 48)
+
+        -- Gen 1's Advanced colour pass is applied to the completed 160x144
+        -- frame, after this screen returns. Clearing the active shader here
+        -- therefore is not enough: raw RGB primitives are still quantized by
+        -- that later pass. Bake the preview into a tiny drawable and ask the
+        -- renderer to replay it after the final palette composite, using the
+        -- same true-colour UI seam as engine-authored sprite previews.
+        G.push("all")
+        G.setCanvas(previewCanvas)
+        G.clear(0, 0, 0, 0)
         local previousShader = G.getShader()
         G.setShader()
         local function set(c) G.setColor(c[1] / 255, c[2] / 255, c[3] / 255, 1) end
         set(w.body)
-        G.circle("fill", x, y, 22)
+        G.circle("fill", 24, 24, 22)
         set(w.accent)
-        G.circle("fill", x - 6, y - 7, 12)
+        G.circle("fill", 18, 17, 12)
         set(w.third)
         if w.style == "line" then
-          G.rectangle("fill", x - 20, y - 2, 40, 5)
+          G.rectangle("fill", 4, 22, 40, 5)
         else
           G.setLineWidth(4)
-          G.circle("line", x, y, 21)
+          G.circle("line", 24, 24, 21)
           G.setLineWidth(1)
         end
-        G.circle("fill", x, y, 5)
+        G.circle("fill", 24, 24, 5)
         G.setShader(previousShader)
+        G.pop()
+
         G.setColor(1, 1, 1, 1)
+        G.draw(previewCanvas, x - 24, y - 24)
+        PaletteFX.markUiSpriteRedraw(previewCanvas, nil, x - 24, y - 24)
       end
 
       local function label(s, n)
