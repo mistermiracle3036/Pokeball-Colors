@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.38"
+  local VERSION = "0.1.39"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -650,6 +650,13 @@ return function(mod)
       local function drawBallPreview(x, y, w)
         if not w then return end
         local G = love.graphics
+        -- Menu chrome can leave the active GB/GBC palette shader installed.
+        -- That shader treats a pixel's RED channel as a 2bpp shade index, so
+        -- true RGB primitives were quantized through the menu palette: Forest
+        -- and Ocean both appeared blue. Draw this true-colour preview plain,
+        -- then restore the caller's shader for the rest of the screen.
+        local previousShader = G.getShader()
+        G.setShader()
         local function set(c) G.setColor(c[1] / 255, c[2] / 255, c[3] / 255, 1) end
         set(w.body)
         G.circle("fill", x, y, 22)
@@ -664,6 +671,7 @@ return function(mod)
           G.setLineWidth(1)
         end
         G.circle("fill", x, y, 5)
+        G.setShader(previousShader)
         G.setColor(1, 1, 1, 1)
       end
 

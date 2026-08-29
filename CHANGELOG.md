@@ -4,6 +4,33 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.39
+
+**Updating from 0.1.33?** You can redesign every Poke Ball from the in-game
+PC. This release also includes the Ultra Ball, Elm starter display, and
+coloured Pokemon previews added in the intervening test builds.
+
+- **Fixed: the editor preview changed presets into the wrong colours.** The
+  Forest and Ocean previews could both appear blue because the menu's Game
+  Boy palette effect was recolouring the true RGB preview. The preview now
+  shows the preset and custom RGB values directly.
+- The PC has a **BALL COLORS** menu styled after the Costumes wardrobe.
+  Choose a ball, apply a whole-ball preset, or edit its body, accent, and
+  third colour with full 0-255 RGB control.
+- Choose whether the third colour paints the ball's seam band or its outline.
+  Gold, Silver and Crystal retain their native third-colour pixel region.
+- **RESTORE DEFAULT** removes a saved customization. A customized Kecleon
+  Ball stays in the chosen colours; restoring it brings back its dynamic
+  target-matching colour.
+- **SHOW MOD BALLS IN COLOR EDITOR** controls whether installed mod-added
+  balls appear in the list and is on by default.
+- Saved colours work in Red, Blue, and Yellow when Colors is set to Advanced,
+  and in Gold, Silver, and Crystal without that setting. Gold-family custom
+  colours also carry into newly caught Pokemon's heal-machine ball.
+- The Ultra Ball remains two shades of gold with a black outline by default;
+  Elm's starter balls remain red/blue/green; Gold-family Pokemon preview
+  pictures remain coloured instead of grey.
+
 ## 0.1.38
 
 **Updating from 0.1.33?** You can now redesign every Poke Ball from the
