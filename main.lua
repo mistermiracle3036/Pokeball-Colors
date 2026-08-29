@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.41"
+  local VERSION = "0.1.42"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -734,6 +734,17 @@ return function(mod)
         -- same true-colour UI seam as engine-authored sprite previews.
         G.push("all")
         G.setCanvas(previewCanvas)
+        -- Binding a Canvas does NOT reset the transform or the scissor, and
+        -- Gen 2 draws every state inside Playfield.push (Playfield.lua:58-66),
+        -- which sets BOTH: a translate to the letterbox origin and a scissor
+        -- in SCREEN space.  Inherited into a 48x48 canvas that put the circles
+        -- outside it and clipped whatever was left, so on Gold/Crystal the
+        -- preview came out fully blank.  Gen 1 never showed it because its
+        -- states draw into Renderer's 160x144 UI canvas at identity.  The
+        -- engine warns about exactly this at Game2.lua:1441.  push("all")
+        -- saved both, so pop() puts them back.
+        G.origin()
+        G.setScissor()
         G.clear(0, 0, 0, 0)
         local previousShader = G.getShader()
         G.setShader()
@@ -754,8 +765,18 @@ return function(mod)
         G.setShader(previousShader)
         G.pop()
 
+        -- On Gen 2 this inline draw IS the preview: markUiSpriteRedraw only
+        -- records while currentPass == "ui" (PaletteFX.lua:389), and that pass
+        -- is set in Renderer:beginFrame, which only Gen 1's Game.lua calls
+        -- (Game2 has its own present path and never reaches Renderer:endFrame's
+        -- replay at Renderer.lua:1232).  So clear the shader around it rather
+        -- than trusting whatever is bound to leave true RGB alone.  Harmless on
+        -- Gen 1, where the replay still lands on top of it.
+        local boundShader = G.getShader()
+        G.setShader()
         G.setColor(1, 1, 1, 1)
         G.draw(previewCanvas, x - 24, y - 24)
+        G.setShader(boundShader)
         PaletteFX.markUiSpriteRedraw(previewCanvas, nil, x - 24, y - 24)
       end
 
