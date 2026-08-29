@@ -4,6 +4,25 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.46
+
+**Updating from 0.1.33?** You can redesign every Poke Ball from the in-game
+PC, in Red, Blue and Yellow with Advanced colours on and in Gold, Silver and
+Crystal. This release also includes the Ultra Ball redesign, the Elm starter
+display, and coloured Pokemon previews added in the intervening test builds.
+
+- **Fixed: every ball opened showing Poke Ball red.** In Gold, Silver and
+  Crystal the editor failed to read a ball's own colours the first time you
+  opened it, so a Fast Ball or a Love Ball started off looking like a Poke
+  Ball until you cycled a preset. It now opens on the right colours.
+- **Balls added by other mods can be customized in Gold, Silver and Crystal.**
+  Previously only the twelve built-in balls appeared there. Too Many Balls and
+  any other mod that adds balls to the BALL pocket now show up in the list.
+- **The adjustable rows show arrows**, so it is clear which rows respond to
+  left and right.
+- The ball preview sits a little higher and more centred.
+- Everything from 0.1.45 below still applies.
+
 ## 0.1.45
 
 **Updating from 0.1.33?** You can redesign every Poke Ball from the in-game

@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.45"
+  local VERSION = "0.1.46"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -551,15 +551,32 @@ return function(mod)
     local data = game and game.data or {}
     local records = data.gen2Balls or data.balls or {}
     local includeMods = mod.options:get("editor_mod_balls") == true
-    local out = {}
+    local out, seen = {}, {}
+    local function add(id)
+      if seen[id] then return end
+      seen[id] = true
+      local item = data.items and data.items[id]
+      out[#out + 1] = {
+        id = id,
+        label = (item and item.name) or id:gsub("_", " "),
+        index = item and item.index or 9999,
+      }
+    end
     for id in pairs(records) do
-      if VANILLA_BALLS[id] or includeMods then
-        local item = data.items and data.items[id]
-        out[#out + 1] = {
-          id = id,
-          label = (item and item.name) or id:gsub("_", " "),
-          index = item and item.index or 9999,
-        }
+      if VANILLA_BALLS[id] or includeMods then add(id) end
+    end
+    -- On Gen 2 the balls REGISTRY is not where mod balls live.  Nothing at
+    -- Gold's throw site reads a mod's ball record, so Too Many Balls
+    -- deliberately registers only an ITEMS record there and stamps
+    -- `pocket = "BALL"` at game.ready (kanto_balls/main.lua:460-495) --
+    -- which is exactly the test Gold itself uses to decide something is a
+    -- ball (gen2/BattleState.lua:3181).  Walking gen2Balls alone therefore
+    -- showed the player nothing but the natives.
+    if includeMods and data.items then
+      for id, def in pairs(data.items) do
+        if type(def) == "table" and (def.pocket == "BALL" or def.ball) then
+          add(id)
+        end
       end
     end
     table.sort(out, function(a, b)
@@ -579,10 +596,18 @@ return function(mod)
     -- selecting one never starts from an invented red fallback.
     if not base and gameRef and gameRef.data and gameRef.data.gen2Palettes then
       local okBS, BS2 = pcall(require, "src.ui.gen2.BattleState")
-      local okName, name = okBS and type(BS2.ballPalette) == "function"
-        and pcall(BS2.ballPalette, {}, id)
+      -- `and` TRUNCATES a call to one value, so folding this into the
+      -- condition made `name` always nil, every lookup miss, and every ball
+      -- open on the red POKE_BALL fallback until the player cycled a preset.
+      -- The engine documents the same trap at BattleAnimView.lua:57.
+      local name
+      if okBS and type(BS2) == "table"
+         and type(BS2.ballPalette) == "function" then
+        local okName, res = pcall(BS2.ballPalette, {}, id)
+        if okName and type(res) == "string" then name = res end
+      end
       local set = gameRef.data.gen2Palettes.battleObjects
-      local row = okName and set and set[name]
+      local row = name and set and set[name]
       if type(row) == "table" and row[2] and row[3] and row[4] then
         base = {
           accent = rgbCopy(row[2]), body = rgbCopy(row[3]),
@@ -823,6 +848,34 @@ return function(mod)
         PaletteFX.markUiSpriteRedraw(previewCanvas, nil, x - 24, y - 24)
       end
 
+      -- Left/right affordance on the rows that cycle, the way Trainer
+      -- Journey marks its PACE row.  It uses ASCII "<VALUE>", which is not
+      -- an option here: neither `<` nor `>` is in the Gold charmap at all.
+      -- Real arrow glyphs are, and Theme already names the one that is the
+      -- SAME code on both generations:
+      --   Theme.cursor       0xED  right arrow, red AND gold
+      --   Theme.cursorHollow 0xEC  hollow right arrow, both
+      --   0x71 left arrow, GOLD ONLY -- red has no left arrow at any code
+      -- So the left arrow is drawn only where it exists, and the row still
+      -- reads as adjustable on Gen 1 from the right arrow alone.
+      local LEFT_ARROW_GEN2 = 0x71
+      local CYCLER_RIGHT = 136          -- last column inside the frame
+
+      -- rightEdge lets the RGB screen keep its values clear of the ball,
+      -- which now sits at x 96..144.
+      local function drawCycler(text, y, changeable, rightEdge)
+        text = tostring(text or "")
+        rightEdge = rightEdge or CYCLER_RIGHT
+        local w = (Font.width and Font.width(text)) or (#text * 8)
+        local vx = rightEdge - w
+        Font.draw(text, vx, y)
+        if not changeable then return end
+        Font.drawCode(Theme.cursor, rightEdge, y)
+        if isGen2(self.game) then
+          Font.drawCode(LEFT_ARROW_GEN2, vx - 8, y)
+        end
+      end
+
       local function label(s, n)
         s = tostring(s or "")
         return #s > n and s:sub(1, n) or s
@@ -859,7 +912,7 @@ return function(mod)
             if i == editRow then Font.drawCode(Theme.cursor, 8, y) end
             Font.draw(label(row, 9), 16, y)
           end
-          Font.draw(label(presets[presetIndex].name, 8), 96, 24)
+          drawCycler(label(presets[presetIndex].name, 8), 24, #presets > 1)
           -- Report the region that will actually be painted, not the stored
           -- preference.  Gold's ball art has no re-indexed variant, so slot 3
           -- is always the outline there; and on Gen 1 with the band option
@@ -874,8 +927,9 @@ return function(mod)
           else
             styleLabel = working.style == "line" and "BAND" or "OUTLINE"
           end
-          Font.draw(styleLabel, 96, 104)
-          drawBallPreview(126, 72, working)
+          drawCycler(styleLabel, 104,
+            not isGen2(self.game) and mod.options:get("ball_band"))
+          drawBallPreview(120, 60, working)
           Font.draw("A: SELECT", 16, 120)
           Font.draw("B: BACK", 88, 120)
         else
@@ -885,10 +939,10 @@ return function(mod)
           for i = 1, 3 do
             local y = 48 + (i - 1) * 16
             if i == rgbChannel then Font.drawCode(Theme.cursor, 16, y) end
-            Font.draw(names[i] .. " " .. ("%03d"):format(working[rgbPart][i]),
-              32, y)
+            Font.draw(names[i], 32, y)
+            drawCycler(("%03d"):format(working[rgbPart][i]), y, true, 88)
           end
-          drawBallPreview(126, 72, working)
+          drawBallPreview(120, 60, working)
           Font.draw("STEP " .. rgbStep .. " (A)", 16, 104)
           Font.draw("LEFT/RIGHT", 16, 120)
           Font.draw("B: BACK", 96, 120)
