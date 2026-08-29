@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.47"
+  local VERSION = "0.1.48"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -605,44 +605,57 @@ return function(mod)
     Runtime.reportError("pokeball_colors", msg)
   end
 
+  -- The Gold-family palette a ball's throw ACTUALLY resolves to, or nil.
+  local function goldSeed(id)
+    if not (gameRef and gameRef.data and gameRef.data.gen2Palettes) then
+      return nil, nil
+    end
+    local okBS, BS2 = pcall(require, "src.ui.gen2.BattleState")
+    -- `and` TRUNCATES a call to one value, so folding this into the
+    -- condition made `name` always nil, every lookup miss, and every ball
+    -- open on the red POKE_BALL fallback until the player cycled a preset.
+    -- The engine documents the same trap at BattleAnimView.lua:57.
+    local name
+    if okBS and type(BS2) == "table"
+       and type(BS2.ballPalette) == "function" then
+      local okName, res = pcall(BS2.ballPalette, {}, id)
+      if okName and type(res) == "string" then name = res end
+    end
+    local set = gameRef.data.gen2Palettes.battleObjects
+    local row = name and set and set[name]
+    if type(row) == "table" and row[2] and row[3] and row[4] then
+      return { accent = rgbCopy(row[2]), body = rgbCopy(row[3]),
+               outline = rgbCopy(row[4]) }, name
+    end
+    return nil, name
+  end
+
   local function editableEntry(id)
     local saved = savedOverrides()[id]
-    local base = savedEntry(id) or resolveEntry(id, {
-      ball = id, surface = "editor", game = gameRef,
-    })
-    -- Gold-native and Gold-mod balls need no COLORS entry. Seed the editor
-    -- from the same palette name their live throw currently resolves, so
-    -- selecting one never starts from an invented red fallback.
+    -- ORDER MATTERS, and it changed in 0.1.48.  On a Gen 2 boot this mod
+    -- does NOT colour throws -- Gold owns its own ball palettes and we
+    -- decorate -- so the truth about what a ball looks like there is Gold's
+    -- palette, not our COLORS table.  Seeding from COLORS first meant the
+    -- five balls we happen to carry showed our Gen 1 colours: the editor
+    -- offered a PURPLE Master Ball on a game that throws a green one.
+    -- So: a saved override, then what the game will actually draw, and only
+    -- then our own table for a Gen 1 boot.
+    local base = savedEntry(id)
+    local goldName
+    if not base then base, goldName = goldSeed(id) end
+    if not base then
+      base = resolveEntry(id, { ball = id, surface = "editor",
+                                game = gameRef })
+    end
     if not base and gameRef and gameRef.data and gameRef.data.gen2Palettes then
-      local okBS, BS2 = pcall(require, "src.ui.gen2.BattleState")
-      -- `and` TRUNCATES a call to one value, so folding this into the
-      -- condition made `name` always nil, every lookup miss, and every ball
-      -- open on the red POKE_BALL fallback until the player cycled a preset.
-      -- The engine documents the same trap at BattleAnimView.lua:57.
-      local name
-      if okBS and type(BS2) == "table"
-         and type(BS2.ballPalette) == "function" then
-        local okName, res = pcall(BS2.ballPalette, {}, id)
-        if okName and type(res) == "string" then name = res end
-      end
-      local set = gameRef.data.gen2Palettes.battleObjects
-      local row = name and set and set[name]
-      if type(row) == "table" and row[2] and row[3] and row[4] then
-        base = {
-          accent = rgbCopy(row[2]), body = rgbCopy(row[3]),
-          outline = rgbCopy(row[4]),
-        }
-      elseif not base then
-        -- Report rather than silently show red.  A mod ball with no
-        -- resolvable palette is indistinguishable on screen from one whose
-        -- owner simply chose red, which is what made CATALYST BALL and
-        -- ORIGIN BALL unexplainable from a screenshot (device, 0.1.46).
-        -- Names which of the two it is: no name came back at all, or a name
-        -- came back with no row behind it.
-        seedFail("%s: %s", tostring(id),
-          name and ("palette " .. tostring(name) .. " has no row")
-            or "no palette name")
-      end
+      -- Report rather than silently show red.  A mod ball with no resolvable
+      -- palette is indistinguishable on screen from one whose owner simply
+      -- chose red, which is what made CATALYST BALL and ORIGIN BALL
+      -- unexplainable from a screenshot (device, 0.1.46).  Names which of
+      -- the two halves failed.
+      seedFail("%s: %s", tostring(id),
+        goldName and ("palette " .. tostring(goldName) .. " has no row")
+          or "no palette name")
     end
     base = base or COLORS.POKE_BALL
     local style = type(saved) == "table" and saved.style
