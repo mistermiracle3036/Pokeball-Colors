@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.49"
+  local VERSION = "0.1.50"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -1027,13 +1027,39 @@ return function(mod)
       --   0x71 left arrow, GOLD ONLY -- red has no left arrow at any code
       -- So the left arrow is drawn only where it exists, and the row still
       -- reads as adjustable on Gen 1 from the right arrow alone.
-      -- RIGHT ARROW ONLY.  0.1.46 also drew a left arrow at 0x71, which the
-      -- gold charmap does list as a left arrow -- but Font.drawCode indexes
-      -- the MAIN glyph sheet, and 0x71 does not live there, so it came out
-      -- as an unrelated symbol next to every preset name (device, 0.1.46).
-      -- Theme.cursor (0xED) is the only arrow proven to draw correctly on
-      -- both generations: it is the menu cursor itself.  One arrow still
-      -- reads as "this row moves".
+      -- ARROWS.  Established by rendering the actual glyph tiles out of both
+      -- the red and gold font.png (mainBase 0x80, 16 per row), not by
+      -- trusting the charmap table -- which lists arrows that are blank:
+      --
+      --   0xEC  hollow right triangle   present, identical on both
+      --   0xED  filled right triangle   present, identical on both  (cursor)
+      --   0xEE  filled DOWN triangle    present, identical on both  (more)
+      --   0xDF  charmap says "left"     TILE IS EMPTY on both
+      --   0xEB  charmap says "right"    empty on gold, a stub on red
+      --   0x71  charmap says "left"     lives in the SWAPPABLE $60 extra
+      --                                 page (extraBase 0x60, and
+      --                                 FontBattleExtra can replace it), so
+      --                                 0.1.46 drew whatever happened to
+      --                                 hold that slot -- the stray symbol
+      --                                 beside every preset name
+      --
+      -- So there is no left arrow to borrow, on either generation.  Draw one
+      -- instead: the exact horizontal mirror of the 0xED tile, as rectangles,
+      -- which is pixel-identical to the font's own arrow and needs no glyph
+      -- at all.  Rows are { xOffset, width } within the 8x8 cell.
+      local LEFT_ARROW_ROWS = {
+        { 5, 2 }, { 4, 3 }, { 3, 4 }, { 2, 5 }, { 3, 4 }, { 4, 3 }, { 5, 2 },
+      }
+      local function drawLeftArrow(x, y)
+        local G = love.graphics
+        local r, g, b, a = G.getColor()
+        G.setColor(0, 0, 0, 1)
+        for i, row in ipairs(LEFT_ARROW_ROWS) do
+          G.rectangle("fill", x + row[1], y + i - 1, row[2], 1)
+        end
+        G.setColor(r, g, b, a)
+      end
+
       local CYCLER_RIGHT = 136          -- last column inside the frame
 
       -- rightEdge lets the RGB screen keep its values clear of the ball,
@@ -1046,6 +1072,7 @@ return function(mod)
         Font.draw(text, vx, y)
         if not changeable then return end
         Font.drawCode(Theme.cursor, rightEdge, y)
+        drawLeftArrow(vx - 8, y)
       end
 
       local function label(s, n)
@@ -1070,6 +1097,15 @@ return function(mod)
               Font.draw(label(item.label, 12), 16, y)
               if savedOverrides()[item.id] then Font.draw("*", 112, y) end
             end
+          end
+          -- More-below marker, the way Trainer Journey marks its scrolling
+          -- lists.  Theme.moreArrow (0xEE) is a filled DOWN triangle and is
+          -- the same tile on both generations -- one of only three arrows
+          -- that actually exist (see the note by drawLeftArrow).  The ball
+          -- list scrolls and had nothing saying so.
+          if scroll + VISIBLE_EDITOR_ROWS < #balls then
+            Font.drawCode(Theme.moreArrow or 0x7e, 136,
+              24 + (VISIBLE_EDITOR_ROWS - 1) * 8)
           end
           Font.draw("A: EDIT", 16, 120)
           Font.draw("B: EXIT", 88, 120)
