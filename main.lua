@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.61"
+  local VERSION = "0.1.62"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -1014,6 +1014,20 @@ return function(mod)
         -- Everything below dispatches on the row's NAME, never its number,
         -- so the Gen 2 layout (no STYLE row) needs no parallel index math.
         local rows = editRows()
+        -- One stepper for both ways of changing the preset: LEFT/RIGHT and
+        -- A.  A advances rather than re-applying what is already showing --
+        -- re-applying looked like the button did nothing.
+        local function stepPreset(direction)
+          if #presets == 0 then return end
+          -- 1..#presets.  From CUSTOM (0) a step enters the list at
+          -- whichever end the player moved toward.
+          if presetIndex == 0 then
+            presetIndex = direction > 0 and 1 or #presets
+          else
+            presetIndex = ((presetIndex - 1 + direction) % #presets) + 1
+          end
+          applyPreset()
+        end
         local function toggleStyle()
           working.style = working.style == "line" and "outline" or "line"
           persistWorking(ball.id, working)
@@ -1025,23 +1039,15 @@ return function(mod)
         elseif input:wasPressed("left") or input:wasPressed("right") then
           local direction = input:wasPressed("right") and 1 or -1
           local kind = rowKind(editRow)
-          if kind == "PRESET" and #presets > 0 then
-            -- 1..#presets.  From CUSTOM (0) a step enters the list at
-            -- whichever end the player moved toward.
-            if presetIndex == 0 then
-              presetIndex = direction > 0 and 1 or #presets
-            else
-              presetIndex = ((presetIndex - 1 + direction) % #presets) + 1
-            end
-            applyPreset()
+          if kind == "PRESET" then
+            stepPreset(direction)
           elseif kind == "STYLE" then
             toggleStyle()
           end
         elseif input:wasPressed("a") then
           local kind = rowKind(editRow)
           if kind == "PRESET" then
-            if presetIndex == 0 then presetIndex = 1 end
-            applyPreset()
+            stepPreset(1)
           elseif kind == "STYLE" then
             toggleStyle()
           elseif kind == "BODY" or kind == "ACCENT" or kind == "THIRD" then
