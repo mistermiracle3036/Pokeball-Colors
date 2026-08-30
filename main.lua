@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.56"
+  local VERSION = "0.1.57"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -1252,7 +1252,7 @@ return function(mod)
             Font.draw("ALL RESTORED", 16, 120)
           else
             Font.draw("A: EDIT", 16, 120)
-            Font.draw("B: EXIT", 88, 120)
+            Font.draw("B: EXIT", 96, 120)
           end
         elseif mode == "edit" then
           Font.draw(label(ball and ball.label, 18), 8, 8)
@@ -1279,8 +1279,11 @@ return function(mod)
               104, true)
           end
           drawBallPreview(120, 60, working)
+          -- x=96, not 88: "A: SELECT" is nine glyphs from x=16 and the font
+          -- advances a flat 8px, so it ENDS at 88 -- the two hints ran
+          -- together as "A: SELECTB: BACK".
           Font.draw("A: SELECT", 16, 120)
-          Font.draw("B: BACK", 88, 120)
+          Font.draw("B: BACK", 96, 120)
         else
           Font.draw(label(ball and ball.label, 18), 8, 8)
           Font.draw(string.upper(rgbPart) .. " RGB", 8, 24)
@@ -1293,8 +1296,10 @@ return function(mod)
           end
           drawBallPreview(120, 60, working)
           Font.draw("STEP " .. rgbStep .. " (A)", 16, 104)
-          Font.draw("LEFT/RIGHT", 16, 120)
-          Font.draw("B: BACK", 96, 120)
+          -- "LEFT/RIGHT" ran into "B: BACK" the same way, and there is no
+          -- room for both plus a gap inside an 18-column box.  The hint goes:
+          -- the arrows drawn either side of the value already say it.
+          Font.draw("B: BACK", 16, 120)
         end
         G.setColor(1, 1, 1, 1)
       end
@@ -2349,23 +2354,6 @@ return function(mod)
       return customGoldPalette(ballId)
         or vanillaGoldBallPalette(self, ballId)
     end
-
-    -- DIAGNOSTIC (0.1.56).  The developer reports cart balls still throwing
-    -- the cart's colours on Gen 2 rather than this mod's first preset, and
-    -- every part of the chain checks out from here: the options fall back to
-    -- their schema default (Loader.lua:1393), BattleState's self.palettes IS
-    -- data.gen2Palettes by reference (gen2/BattleState.lua:250) so the row we
-    -- write is the row objPalette reads, and this wrap is outermost because
-    -- load order is priority ascending and Too Many Balls sits at 150 against
-    -- our 200.  So the state goes on the [ERRS] screen instead of another
-    -- guess -- both option values, and what this wrap actually answers for
-    -- MASTER BALL.  Kept short: that screen wraps at 16 columns.
-    Runtime.reportError("pokeball_colors", string.format(
-      "g2 en=%d rec=%d",
-      mod.options:get("enabled") and 1 or 0,
-      mod.options:get("gen2_recolor") and 1 or 0))
-    Runtime.reportError("pokeball_colors",
-      "MB=" .. tostring(customGoldPalette("MASTER_BALL")))
 
     -- What to remember about a ball at the moment it catches something.
     --

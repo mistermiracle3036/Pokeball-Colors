@@ -4,6 +4,18 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.57
+
+**Updating from 0.1.33?** You can redesign every Poke Ball from the in-game
+PC, in Red, Blue and Yellow with Advanced colours on and in Gold, Silver and
+Crystal. This release also includes the Ultra Ball redesign, the Elm starter
+display, and coloured Pokemon previews added in the intervening test builds.
+
+- The button hints at the bottom of the editor ran into each other --
+  "A: SELECTB: BACK". They are spaced properly now.
+- Removed the diagnostic lines 0.1.56 put on the mod manager's error screen.
+- Everything from 0.1.55 below still applies.
+
 ## 0.1.56
 
 Diagnostic build. Adds two lines to the mod manager's error screen on a
