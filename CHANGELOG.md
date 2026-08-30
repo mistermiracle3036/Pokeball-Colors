@@ -4,6 +4,69 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.58
+
+**Everything here is new since v0.1.33**, the last version you would have
+installed. It is a big update: there is a colour editor in the PC now, and
+Gold, Silver and Crystal are properly supported for the first time.
+
+### Design your own Poke Balls
+
+There is a new **BALL COLORS** menu on the PC. Open it and you get a list of
+every ball in your game, including balls added by other mods.
+
+- Pick a **preset** built for that particular ball, or set its body, accent
+  and third colour by hand with full 0-255 control.
+- The preview is the **real ball sprite** in your colours, so what you choose
+  is what you see when you throw it.
+- **RESTORE DEFAULT** puts one ball back. **RESTORE ALL**, at the bottom of
+  the list, puts every ball back at once.
+- Your colours are saved with your game and survive quitting.
+
+### Gold, Silver and Crystal
+
+- **Balls are coloured in these games now.** Before this, the mod only
+  touched the Pokemon Center there and left every throw alone. The balls
+  these games come with use Pokeball Colors' palette straight away, and you
+  can change any of them.
+- **Balls added by other mods keep their author's colours** unless you change
+  them yourself. Too Many Balls works alongside this mod with neither
+  overriding the other.
+- Any ball's own colour is always one step away as the **ORIGINAL** preset.
+- A new option, **RECOLOR BALLS IN GEN 2 GAMES**, switches the whole thing
+  off if you prefer the original look.
+- Professor Elm's three starter balls are red, blue and green, matching
+  Cyndaquil, Totodile and Chikorita.
+- Pokemon preview pictures are in colour instead of grey.
+
+### The Ultra Ball
+
+Redesigned into two shades of gold with a black rim, instead of gold over a
+black lower half. Its throw shimmers between the two golds rather than
+blinking gold and black.
+
+### At the Pokemon Center
+
+- The balls on the heal machine match what each Pokemon was caught in, on
+  every supported game.
+- Recolouring a ball updates Pokemon you have **already** caught in it. Balls
+  that pick their colour when thrown, like the Kecleon Ball, still keep the
+  colour they caught with -- that is the point of them.
+
+### Options
+
+Trimmed from eight to five. The band-or-outline choice is now made per ball
+on the editor's STYLE row instead of for every ball at once, so the old
+global toggle is gone, and the Snag Ball's colours are yours to set like any
+other ball's.
+
+### For mod authors
+
+A colour entry can now set `outline` alongside `line`: `line` paints the seam
+band, `outline` paints the rim. Both are optional and both degrade safely on
+older copies of this mod, so neither is a reason to raise a version floor.
+`registerColorResolver(id, fn)` lets a ball decide its colour per throw.
+
 ## 0.1.57
 
 **Updating from 0.1.33?** You can redesign every Poke Ball from the in-game

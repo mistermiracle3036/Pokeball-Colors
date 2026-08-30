@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.57"
+  local VERSION = "0.1.58"
   mod.exports.version = VERSION
 
   mod.options:define({
