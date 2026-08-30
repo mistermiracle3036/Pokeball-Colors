@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.62"
+  local VERSION = "0.1.63"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -887,6 +887,17 @@ return function(mod)
         end
       end
 
+      -- "RESTORE", not "RESTORE DEFAULT".  Row labels are truncated to nine
+      -- glyphs, and nine is the ceiling rather than a choice: at x=16 they
+      -- end at 88 and the ball preview starts at 96, so a longer label would
+      -- run into the ball.  "RESTORE DEFAULT" therefore printed as
+      -- "RESTORE D", which reads as nothing.  It pairs with RESTORE ALL at
+      -- the bottom of the ball list.
+      --
+      -- The row's LABEL is also its identity -- the input handlers dispatch
+      -- on rowKind(i), the string itself -- so this rename moves both at
+      -- once and there is no second table to keep in step.
+      --
       -- The STYLE row exists only where it can do something.  Gold, Silver
       -- and Crystal have no re-indexed ball art, so slot 3 is the outline
       -- whatever the row says -- 0.1.44 made it merely inert, and the
@@ -894,11 +905,11 @@ return function(mod)
       -- screen at all.  Every other row shifts up by one there.
       local function editRows()
         if isGen2(self.game) then
-          return { "PRESET", "BODY", "ACCENT", "THIRD", "RESTORE DEFAULT",
+          return { "PRESET", "BODY", "ACCENT", "THIRD", "RESTORE",
                    "DONE" }
         end
         return { "PRESET", "STYLE", "BODY", "ACCENT", "THIRD",
-                 "RESTORE DEFAULT", "DONE" }
+                 "RESTORE", "DONE" }
       end
 
       -- What the visible row at `i` means, so the handlers below never have
@@ -1053,7 +1064,7 @@ return function(mod)
           elseif kind == "BODY" or kind == "ACCENT" or kind == "THIRD" then
             rgbPart = kind:lower()
             rgbChannel, mode = 1, "rgb"
-          elseif kind == "RESTORE DEFAULT" then
+          elseif kind == "RESTORE" then
             -- CLEARING is the whole operation now.  0.1.51 wrote this mod's
             -- colourway instead, because back then clearing on Gold handed
             -- the ball to the cart palette.  0.1.52 removed that reason: with

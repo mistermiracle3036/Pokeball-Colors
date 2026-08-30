@@ -4,7 +4,7 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
-## 0.1.62
+## 0.1.63
 
 **Everything here is new since v0.1.33**, the last version you would have
 installed. It is a big update: there is a colour editor in the PC now, and
@@ -19,8 +19,8 @@ every ball in your game, including balls added by other mods.
   and third colour by hand with full 0-255 control.
 - The preview is the **real ball sprite** in your colours, so what you choose
   is what you see when you throw it.
-- **RESTORE DEFAULT** puts one ball back. **RESTORE ALL**, at the bottom of
-  the list, puts every ball back at once.
+- **RESTORE** puts one ball back. **RESTORE ALL**, at the bottom of the list,
+  puts every ball back at once.
 - Your colours are saved with your game and survive quitting.
 
 ### Gold, Silver and Crystal

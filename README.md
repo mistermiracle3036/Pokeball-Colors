@@ -43,7 +43,7 @@ The third colour can be assigned to a seam band or an outer outline. A Game
 Boy object sprite has one transparent palette slot and three visible slots,
 so the band and outline share the third slot and cannot display as two
 independent colours at once. Gold, Silver and Crystal keep their native ball
-pixel layout while using all three selected colours. **RESTORE DEFAULT**
+pixel layout while using all three selected colours. **RESTORE**
 removes the saved choice.
 
 Balls added by other mods appear automatically when **SHOW MOD BALLS IN COLOR
