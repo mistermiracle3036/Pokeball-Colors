@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.55"
+  local VERSION = "0.1.56"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -2349,6 +2349,23 @@ return function(mod)
       return customGoldPalette(ballId)
         or vanillaGoldBallPalette(self, ballId)
     end
+
+    -- DIAGNOSTIC (0.1.56).  The developer reports cart balls still throwing
+    -- the cart's colours on Gen 2 rather than this mod's first preset, and
+    -- every part of the chain checks out from here: the options fall back to
+    -- their schema default (Loader.lua:1393), BattleState's self.palettes IS
+    -- data.gen2Palettes by reference (gen2/BattleState.lua:250) so the row we
+    -- write is the row objPalette reads, and this wrap is outermost because
+    -- load order is priority ascending and Too Many Balls sits at 150 against
+    -- our 200.  So the state goes on the [ERRS] screen instead of another
+    -- guess -- both option values, and what this wrap actually answers for
+    -- MASTER BALL.  Kept short: that screen wraps at 16 columns.
+    Runtime.reportError("pokeball_colors", string.format(
+      "g2 en=%d rec=%d",
+      mod.options:get("enabled") and 1 or 0,
+      mod.options:get("gen2_recolor") and 1 or 0))
+    Runtime.reportError("pokeball_colors",
+      "MB=" .. tostring(customGoldPalette("MASTER_BALL")))
 
     -- What to remember about a ball at the moment it catches something.
     --

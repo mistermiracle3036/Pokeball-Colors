@@ -4,6 +4,13 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.56
+
+Diagnostic build. Adds two lines to the mod manager's error screen on a
+Gold-family boot, reporting whether ball recolouring is switched on and what
+colour the Master Ball resolves to. No behaviour change; these lines come
+back out once the report is in.
+
 ## 0.1.55
 
 **Updating from 0.1.33?** You can redesign every Poke Ball from the in-game
