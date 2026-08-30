@@ -123,7 +123,11 @@ jobs:
           rm -rf build && mkdir -p build/"$MOD_ID"
           for entry in * .[!.]*; do
             case "$entry" in
-              .git|.github|.gitignore|tests|build|NOTES.md|notes.md|*.zip) continue ;;
+              # `docs` is here because this is a SINGLE-mod repo: the zip is
+              # built from the repo ROOT, so anything not excluded lands in
+              # the player's download. README screenshots are for the GitHub
+              # page, not for shipping.
+              .git|.github|.gitignore|tests|build|docs|NOTES.md|notes.md|*.zip) continue ;;
             esac
             [ -e "$entry" ] || continue
             cp -r "$entry" build/"$MOD_ID"/

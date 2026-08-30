@@ -19,6 +19,18 @@ and Yellow that ball is a fixed green-and-red for now; whether it goes
 dynamic there is its own mod's call. The support for it is in place on both
 (see [For mod authors](#for-mod-authors)).
 
+## Design your own balls
+
+Open the PC and choose **BALL COLORS**. Every ball in your game is listed,
+including balls other mods have added.
+
+| | |
+| --- | --- |
+| ![The ball editor](docs/editor-poke-ball.png) | ![A preset applied](docs/editor-rocket-preset.png) |
+| Pick a preset built for that ball — the preview is the real sprite, in your colours. | Presets are tailored per ball, so a Poke Ball offers different looks from an Ultra Ball. |
+| ![Editing RGB](docs/editor-rgb.png) | ![The style row](docs/editor-style-band.png) |
+| Or set body, accent and third colour by hand, 0-255 on each channel. | On Red, Blue and Yellow, **STYLE** puts the third colour on the seam band or the rim. |
+
 > **Development Preview:** Pokeball Colors is in active development. Bug
 > reports and ideas are welcome in [GitHub Issues](../../issues) —
 > please include the version number from your load log and which other
