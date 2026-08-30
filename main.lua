@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.59"
+  local VERSION = "0.1.60"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -1279,10 +1279,13 @@ return function(mod)
               104, true)
           end
           drawBallPreview(120, 60, working)
-          -- x=96, not 88: "A: SELECT" is nine glyphs from x=16 and the font
-          -- advances a flat 8px, so it ENDS at 88 -- the two hints ran
-          -- together as "A: SELECTB: BACK".
-          Font.draw("A: SELECT", 16, 120)
+          -- "A: PICK", not "A: SELECT".  Nine glyphs from x=16 at a flat 8px
+          -- advance ends at 88, so even with B moved to 96 the two hints had
+          -- one blank column between them and still read as one word.  Seven
+          -- glyphs ends at 72, which gives the same three-column gap the list
+          -- screen's "A: EDIT" / "B: EXIT" already had and reads as two
+          -- separate hints.
+          Font.draw("A: PICK", 16, 120)
           Font.draw("B: BACK", 96, 120)
         else
           Font.draw(label(ball and ball.label, 18), 8, 8)
