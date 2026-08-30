@@ -4,7 +4,7 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
-## 0.1.60
+## 0.1.61
 
 **Everything here is new since v0.1.33**, the last version you would have
 installed. It is a big update: there is a colour editor in the PC now, and
