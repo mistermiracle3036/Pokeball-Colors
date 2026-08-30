@@ -4,7 +4,7 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
-## 0.1.58
+## 0.1.59
 
 **Everything here is new since v0.1.33**, the last version you would have
 installed. It is a big update: there is a colour editor in the PC now, and
@@ -69,11 +69,6 @@ older copies of this mod, so neither is a reason to raise a version floor.
 
 ## 0.1.57
 
-**Updating from 0.1.33?** You can redesign every Poke Ball from the in-game
-PC, in Red, Blue and Yellow with Advanced colours on and in Gold, Silver and
-Crystal. This release also includes the Ultra Ball redesign, the Elm starter
-display, and coloured Pokemon previews added in the intervening test builds.
-
 - The button hints at the bottom of the editor ran into each other --
   "A: SELECTB: BACK". They are spaced properly now.
 - Removed the diagnostic lines 0.1.56 put on the mod manager's error screen.
@@ -88,11 +83,6 @@ back out once the report is in.
 
 ## 0.1.55
 
-**Updating from 0.1.33?** You can redesign every Poke Ball from the in-game
-PC, in Red, Blue and Yellow with Advanced colours on and in Gold, Silver and
-Crystal. This release also includes the Ultra Ball redesign, the Elm starter
-display, and coloured Pokemon previews added in the intervening test builds.
-
 - **Three options removed, all replaced by the PC editor.** BLACK
   BAND/OUTLINE ON BALLS is now the STYLE row, chosen per ball instead of for
   all of them at once. ROCKET-COLORED SNAG BALL is gone because you can now
@@ -104,22 +94,12 @@ display, and coloured Pokemon previews added in the intervening test builds.
 
 ## 0.1.54
 
-**Updating from 0.1.33?** You can redesign every Poke Ball from the in-game
-PC, in Red, Blue and Yellow with Advanced colours on and in Gold, Silver and
-Crystal. This release also includes the Ultra Ball redesign, the Elm starter
-display, and coloured Pokemon previews added in the intervening test builds.
-
 - The recolour setting is now called **"Recolor balls in GEN 2 games"**. It
   always covered Gold, Silver and Crystal alike; naming only Gold made it look
   as though the other two were left out.
 - Everything from 0.1.53 below still applies.
 
 ## 0.1.53
-
-**Updating from 0.1.33?** You can redesign every Poke Ball from the in-game
-PC, in Red, Blue and Yellow with Advanced colours on and in Gold, Silver and
-Crystal. This release also includes the Ultra Ball redesign, the Elm starter
-display, and coloured Pokemon previews added in the intervening test builds.
 
 - **RESTORE ALL**, at the bottom of the ball list, puts every ball back to its
   default in one go.
@@ -131,11 +111,6 @@ display, and coloured Pokemon previews added in the intervening test builds.
 - Everything from 0.1.52 below still applies.
 
 ## 0.1.52
-
-**Updating from 0.1.33?** You can redesign every Poke Ball from the in-game
-PC, in Red, Blue and Yellow with Advanced colours on and in Gold, Silver and
-Crystal. This release also includes the Ultra Ball redesign, the Elm starter
-display, and coloured Pokemon previews added in the intervening test builds.
 
 - **Balls are now recoloured in Gold, Silver and Crystal by default.** The
   mod used to leave those games' ball throws alone and only colour the
@@ -153,11 +128,6 @@ display, and coloured Pokemon previews added in the intervening test builds.
 
 ## 0.1.51
 
-**Updating from 0.1.33?** You can redesign every Poke Ball from the in-game
-PC, in Red, Blue and Yellow with Advanced colours on and in Gold, Silver and
-Crystal. This release also includes the Ultra Ball redesign, the Elm starter
-display, and coloured Pokemon previews added in the intervening test builds.
-
 - **Every preset has a name now.** The nameless DEFAULT entry is gone.
 - **In Gold, Silver and Crystal the game's own ball colours are a preset
   called GEN 2**, so you can still pick the green Master Ball or the blue
@@ -170,22 +140,12 @@ display, and coloured Pokemon previews added in the intervening test builds.
 
 ## 0.1.50
 
-**Updating from 0.1.33?** You can redesign every Poke Ball from the in-game
-PC, in Red, Blue and Yellow with Advanced colours on and in Gold, Silver and
-Crystal. This release also includes the Ultra Ball redesign, the Elm starter
-display, and coloured Pokemon previews added in the intervening test builds.
-
 - **Adjustable rows now show an arrow on both sides**, so it is obvious you
   can move left as well as right.
 - **The ball list shows a down arrow when there are more balls below it.**
 - Everything from 0.1.49 below still applies.
 
 ## 0.1.49
-
-**Updating from 0.1.33?** You can redesign every Poke Ball from the in-game
-PC, in Red, Blue and Yellow with Advanced colours on and in Gold, Silver and
-Crystal. This release also includes the Ultra Ball redesign, the Elm starter
-display, and coloured Pokemon previews added in the intervening test builds.
 
 - **You can get back to a ball's original colours from the PRESET row.**
   DEFAULT is now part of the cycle, so it is always one step away in either
@@ -202,11 +162,6 @@ display, and coloured Pokemon previews added in the intervening test builds.
 
 ## 0.1.48
 
-**Updating from 0.1.33?** You can redesign every Poke Ball from the in-game
-PC, in Red, Blue and Yellow with Advanced colours on and in Gold, Silver and
-Crystal. This release also includes the Ultra Ball redesign, the Elm starter
-display, and coloured Pokemon previews added in the intervening test builds.
-
 - **In Gold, Silver and Crystal the editor now opens on the colours those
   games actually use.** It was seeding a few balls from the Gen 1 palette
   instead, so the Master Ball offered purple on a game that throws a green
@@ -216,11 +171,6 @@ display, and coloured Pokemon previews added in the intervening test builds.
   preset name.
 
 ## 0.1.47
-
-**Updating from 0.1.33?** You can redesign every Poke Ball from the in-game
-PC, in Red, Blue and Yellow with Advanced colours on and in Gold, Silver and
-Crystal. This release also includes the Ultra Ball redesign, the Elm starter
-display, and coloured Pokemon previews added in the intervening test builds.
 
 - **Every ball now comes back with a black outline, not a black centre band,
   when you RESTORE DEFAULT.** The band is still available -- pick BAND on the
@@ -239,11 +189,6 @@ display, and coloured Pokemon previews added in the intervening test builds.
 
 ## 0.1.46
 
-**Updating from 0.1.33?** You can redesign every Poke Ball from the in-game
-PC, in Red, Blue and Yellow with Advanced colours on and in Gold, Silver and
-Crystal. This release also includes the Ultra Ball redesign, the Elm starter
-display, and coloured Pokemon previews added in the intervening test builds.
-
 - **Fixed: every ball opened showing Poke Ball red.** In Gold, Silver and
   Crystal the editor failed to read a ball's own colours the first time you
   opened it, so a Fast Ball or a Love Ball started off looking like a Poke
@@ -258,11 +203,6 @@ display, and coloured Pokemon previews added in the intervening test builds.
 
 ## 0.1.45
 
-**Updating from 0.1.33?** You can redesign every Poke Ball from the in-game
-PC, in Red, Blue and Yellow with Advanced colours on and in Gold, Silver and
-Crystal. This release also includes the Ultra Ball redesign, the Elm starter
-display, and coloured Pokemon previews added in the intervening test builds.
-
 - **Fixed: the real-ball preview added in 0.1.44 never actually appeared.**
   It looked up the animation data under the wrong name in Gold, Silver and
   Crystal, so it quietly fell back to the old approximate swatch. The preview
@@ -272,11 +212,6 @@ display, and coloured Pokemon previews added in the intervening test builds.
 - Everything from 0.1.44 below still applies.
 
 ## 0.1.44
-
-**Updating from 0.1.33?** You can redesign every Poke Ball from the in-game
-PC, in Red, Blue and Yellow with Advanced colours on and in Gold, Silver and
-Crystal. This release also includes the Ultra Ball redesign, the Elm starter
-display, and coloured Pokemon previews added in the intervening test builds.
 
 - **The preview is now the real ball.** It draws the actual thrown sprite in
   your chosen colours instead of an approximation of it, so what you pick is
@@ -290,11 +225,6 @@ display, and coloured Pokemon previews added in the intervening test builds.
 - Everything from 0.1.43 below still applies.
 
 ## 0.1.43
-
-**Updating from 0.1.33?** You can redesign every Poke Ball from the in-game
-PC, in Red, Blue and Yellow with Advanced colours on and in Gold, Silver and
-Crystal. This release also includes the Ultra Ball redesign, the Elm starter
-display, and coloured Pokemon previews added in the intervening test builds.
 
 - **The preview now looks like a Poke Ball.** It draws the three colours where
   they actually land on the ball -- body across the top, accent on the lower
@@ -312,11 +242,6 @@ display, and coloured Pokemon previews added in the intervening test builds.
 
 ## 0.1.42
 
-**Updating from 0.1.33?** You can redesign every Poke Ball from the in-game
-PC, in Red, Blue and Yellow with Advanced colours on and in Gold, Silver and
-Crystal. This release also includes the Ultra Ball redesign, the Elm starter
-display, and coloured Pokemon previews added in the intervening test builds.
-
 - **Fixed: the ball preview was blank in Gold, Silver and Crystal.** The
   editor's colour swatch drew nothing on those games, so you were picking
   colours without being able to see them. It now shows the ball you are
@@ -324,10 +249,6 @@ display, and coloured Pokemon previews added in the intervening test builds.
 - Everything from 0.1.41 below still applies.
 
 ## 0.1.41
-
-**Updating from 0.1.33?** You can redesign every Poke Ball from the in-game
-PC. This release also includes the Ultra Ball, Elm starter display, and
-coloured Pokemon previews added in the intervening test builds.
 
 - **Each native ball now has presets designed for that ball.** Poke, Great,
   Ultra, Master, Safari, and the Gold-family specialty balls get distinct
@@ -343,10 +264,6 @@ coloured Pokemon previews added in the intervening test builds.
 
 ## 0.1.40
 
-**Updating from 0.1.33?** You can redesign every Poke Ball from the in-game
-PC. This release also includes the Ultra Ball, Elm starter display, and
-coloured Pokemon previews added in the intervening test builds.
-
 - **Fixed: editor previews now keep their actual RGB colours in-game.** The
   previous fix happened before the final Advanced-colour screen pass, so
   Forest, Gold, Purple, and other presets could still appear blue, cyan, or
@@ -360,10 +277,6 @@ coloured Pokemon previews added in the intervening test builds.
   the chosen colours, while restoring it re-enables its dynamic colour.
 
 ## 0.1.39
-
-**Updating from 0.1.33?** You can redesign every Poke Ball from the in-game
-PC. This release also includes the Ultra Ball, Elm starter display, and
-coloured Pokemon previews added in the intervening test builds.
 
 - **Fixed: the editor preview changed presets into the wrong colours.** The
   Forest and Ocean previews could both appear blue because the menu's Game
@@ -387,10 +300,6 @@ coloured Pokemon previews added in the intervening test builds.
   pictures remain coloured instead of grey.
 
 ## 0.1.38
-
-**Updating from 0.1.33?** You can now redesign every Poke Ball from the
-in-game PC. This also includes the Ultra Ball, Elm starter display, and
-coloured Pokemon previews added in the intervening test builds.
 
 - The PC has a new **BALL COLORS** menu, styled after the Costumes wardrobe.
   Choose a ball, apply a whole-ball preset, or edit its body, accent, and
@@ -418,9 +327,6 @@ Internal test package superseded by 0.1.38 before device testing.
 
 ## 0.1.36
 
-**Updating from 0.1.33?** A new look for the ULTRA BALL, plus the Gold
-colour work from 0.1.34/0.1.35 below.
-
 - **The ULTRA BALL is two shades of gold with a black outline**, instead of
   gold over a black lower half. It reads as one ball now: its throw strobe
   shimmers between the two golds rather than blinking gold/black.
@@ -436,9 +342,6 @@ colour work from 0.1.34/0.1.35 below.
   band/outline follows **BLACK BAND/OUTLINE ON BALLS**.
 
 ## 0.1.35
-
-**Updating from 0.1.33?** Gold's Pokemon preview pictures now have colour,
-and Elm's starter balls are colour-coded.
 
 - Elm's three starter balls are colour-coded in the lab: **red for
   Cyndaquil, blue for Totodile, and green for Chikorita**.
