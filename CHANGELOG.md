@@ -4,6 +4,25 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.65
+
+Fixes from a code review of everything released in 0.1.64.
+
+- **Fixed: a Pokemon caught in a ball you had not customized could keep an
+  out-of-date colour on the heal machine.** Catching stored the colour that
+  ball had at the time; pressing RESTORE later left that Pokemon showing it
+  while every other ball moved on. Nothing needs re-catching -- the stored
+  colour is simply no longer written or read.
+- **Fixed: the preset name could disagree with the STYLE row**, naming a
+  preset whose band-or-rim setting was not the one actually applied.
+- **Fixed: a ball name containing an accented character could be cut in the
+  middle of it** in the ball list, drawing a stray symbol.
+- Ball colours are read from your save far less often -- they were being
+  looked up once per sprite per frame during every throw.
+- The colour editor no longer builds up images as you scrub an RGB channel.
+- If the ball artwork cannot be loaded, the editor tries again on your next
+  boot instead of staying on the simplified swatch for the session.
+
 ## 0.1.64
 
 **Everything here is new since v0.1.33**, the last version you would have
