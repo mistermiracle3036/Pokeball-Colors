@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.64"
+  local VERSION = "0.1.71"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -84,6 +84,22 @@ return function(mod)
       -- and naming one of the three in a setting that governs all of them
       -- reads as though the other two are excluded.
       label = "Recolor balls in GEN 2 games", default = true },
+    -- WHERE the editor is reached from.  A player reported the PC crashing
+    -- with a mod that replaces it, and suggested moving the editor into the
+    -- mod's own settings -- which the engine cannot do: ManagerState renders
+    -- only `toggle` and `choice` rows (ManagerState.lua:1057/1067) and has no
+    -- row type that can push a screen.  The START menu can, through the same
+    -- {label, onSelect} shape the PC uses, and it is the safer of the two: it
+    -- caps and scrolls at maxVisible (StartMenu.lua:192) whereas the Gen 1 PC
+    -- sizes its box as `#items * 2 + 2` with no bound at all.
+    --
+    -- Default stays PC -- developer's preference -- so nobody's muscle memory
+    -- moves.  Entries are read POSITIONALLY: [1] displays, [2] is stored.
+    { key = "editor_entry", type = "choice",
+      label = "BALL COLORS menu is in",
+      choices = { { "PC", "pc" }, { "START MENU", "start" },
+                  { "BOTH", "both" } },
+      default = "pc" },
     { key = "dev_all_balls_in_marts", type = "toggle",
       label = "DEV: every ball sold in marts", default = false },
   })
@@ -198,19 +214,46 @@ return function(mod)
     return out
   end
 
+  -- CACHED, because these are read from DRAW paths.  resolveEntry consults
+  -- savedEntry before it consults throwCache, and resolveEntry is reached
+  -- once per anim sprite per frame through animSpriteColors -- so an
+  -- uncached savedOverrides was a mod.save:get plus three table allocations
+  -- per sprite per frame during every toss, shake and resting ball.  The
+  -- ball list's saved-marker column read it once per visible row per frame
+  -- on top of that.
+  --
+  -- Invalidated in exactly the three places the answer can change: this
+  -- mod's own writes, and game.ready -- which is a DIFFERENT save, so the
+  -- cache must not survive it.  Nothing else writes this key; it is
+  -- published as owns.colorEditorSave precisely so nothing else does.
+  local overridesCache          -- the raw save table
+  local entryCache              -- id -> built entry | false (known absent)
+
+  local function invalidateOverrides()
+    overridesCache, entryCache = nil, nil
+    throwCache = {}
+  end
+
   local function savedOverrides()
+    if overridesCache then return overridesCache end
     local rows = mod.save:get(COLOR_SAVE_KEY)
-    return type(rows) == "table" and rows or {}
+    overridesCache = type(rows) == "table" and rows or {}
+    return overridesCache
   end
 
   local function savedEntry(id)
+    entryCache = entryCache or {}
+    local hit = entryCache[id]
+    if hit ~= nil then return hit or nil end
     local row = savedOverrides()[id]
     if type(row) ~= "table" or type(row.body) ~= "table"
        or type(row.accent) ~= "table" or type(row.third) ~= "table" then
+      entryCache[id] = false
       return nil
     end
     local out = { body = rgbCopy(row.body), accent = rgbCopy(row.accent) }
     out[row.style == "outline" and "outline" or "line"] = rgbCopy(row.third)
+    entryCache[id] = out
     return out
   end
 
@@ -222,14 +265,14 @@ return function(mod)
       style = style == "outline" and "outline" or "line",
     }
     mod.save:set(COLOR_SAVE_KEY, rows)
-    throwCache = {}
+    invalidateOverrides()
   end
 
   local function clearSavedEntry(id)
     local rows = savedOverrides()
     rows[id] = nil
     mod.save:set(COLOR_SAVE_KEY, rows)
-    throwCache = {}
+    invalidateOverrides()
   end
 
   -- What this mod owns, for other mods to check before touching
@@ -257,6 +300,7 @@ return function(mod)
     caughtBallPaletteField = "mon.caughtBallPalette",
     caughtBallPaletteRowField = "mon.caughtBallPaletteRow",
     colorResolvers = true,
+    colorPresets = true,           -- exports.registerPreset
     colorEditorSave = COLOR_SAVE_KEY,
     colorEditorScreen = EDITOR_SCREEN,
   }
@@ -412,6 +456,66 @@ return function(mod)
   local resolverDead = {}
   throwCache = {}
 
+  -- ------------------------------------------------------------------
+  -- PRESETS REGISTERED BY OTHER MODS.
+  --
+  -- registerColors sets a ball's DEFAULT and deliberately never clobbers one
+  -- that exists, so a mod wanting to recolour a ball this mod already owns --
+  -- the five natives, which is exactly the overlap -- finds every entry
+  -- silently skipped.  That is correct for defaults and useless for this
+  -- case.
+  --
+  -- So a second, additive door: contribute a NAMED colourway that appears in
+  -- the editor beside this mod's own, and let the player choose.  Nothing is
+  -- overwritten, nothing has to yield, and two mods with an opinion about the
+  -- Poke Ball stop being a conflict at all.
+  --
+  --   local pbc = mod.find("pokeball_colors")
+  --   if pbc and pbc.exports and pbc.exports.registerPreset then
+  --     pbc.exports.registerPreset("POKE_BALL", "COLORFIX",
+  --       { body = {224,72,56}, accent = {248,216,208}, outline = {24,24,24} })
+  --   end
+  --
+  -- The entry is the same shape registerColors takes, so there is one colour
+  -- shape across this whole API.  NOTE for anyone porting from a wrap of
+  -- animSpriteColors: that returns { index1, index2, index3 } positionally,
+  -- where index 1 is the lower crescent (our `accent`), index 2 the upper
+  -- mass (our `body`) and index 3 the rim (our `outline`).  Position order is
+  -- the same; only the names differ, and getting it backwards produces a
+  -- plausible-looking but inverted ball.
+  local MOD_PRESETS = {}
+
+  mod.exports.registerPreset = function(ballId, name, entry)
+    if type(ballId) ~= "string" or ballId == ""
+       or type(name) ~= "string" or name == "" then
+      mod.log:warn("registerPreset: need a ball id and a preset name")
+      return false
+    end
+    if not validColor(entry) then
+      mod.log:warn("registerPreset: bad colour for %s/%s (need "
+        .. "{ body = {r,g,b}, accent = {r,g,b}, line|outline optional })",
+        ballId, name)
+      return false
+    end
+    local list = MOD_PRESETS[ballId]
+    if not list then list = {} MOD_PRESETS[ballId] = list end
+    for _, existing in ipairs(list) do
+      if existing.name == name then
+        -- non-clobber, matching registerColors: a repeated call is a no-op
+        -- rather than a silent redefinition of someone else's row
+        return false
+      end
+    end
+    list[#list + 1] = {
+      name = name,
+      body = rgbCopy(entry.body), accent = rgbCopy(entry.accent),
+      third = rgbCopy(entry.line or entry.outline or entry.body),
+      style = entry.line and "line" or "outline",
+    }
+    mod.log:info("registerPreset: %s gained the preset %s", ballId, name)
+    return true
+  end
+
   mod.exports.registerColorResolver = function(id, fn)
     if type(id) ~= "string" or id == "" or type(fn) ~= "function" then
       mod.log:warn("registerColorResolver: need (ballId, function)")
@@ -471,13 +575,6 @@ return function(mod)
   -- the rest of this mod; Gold/Silver/Crystal use them directly.
   -- ------------------------------------------------------------------
   local VISIBLE_EDITOR_ROWS = 8
-  local VANILLA_BALLS = {
-    MASTER_BALL = true, ULTRA_BALL = true, GREAT_BALL = true,
-    POKE_BALL = true, SAFARI_BALL = true, PARK_BALL = true,
-    FRIEND_BALL = true, HEAVY_BALL = true, LEVEL_BALL = true,
-    LURE_BALL = true, FAST_BALL = true, MOON_BALL = true,
-    LOVE_BALL = true,
-  }
   local GENERIC_PRESETS = {
     -- NOT "CLASSIC": with DEFAULT now first in the cycle, a preset called
     -- CLASSIC read as "put it back how it was" while actually painting the
@@ -662,54 +759,64 @@ return function(mod)
   -- the mod is its palette, so its palette is the baseline.  A ball nothing
   -- covers falls to what the game draws, then to the generic list, rather
   -- than being asserted as red.
+  -- The five native balls' colours lived in two hand-maintained places:
+  -- COLORS, which the Gen 1 throw reads, and the first row of BALL_PRESETS,
+  -- which the editor seed and the Gen 2 assertion read.  They agreed only by
+  -- inspection, and a change to one would have drawn one colour while the
+  -- editor displayed another -- exactly the mismatch 0.1.48 existed to fix.
+  -- Derive the preset row from COLORS instead, so there is one source and no
+  -- way to desync.  The preset's NAME is its own; only the colours are taken.
+  for id, preset in pairs(BALL_PRESETS) do
+    local c = COLORS[id]
+    if c then
+      local row = preset[1]
+      row[2] = rgbCopy(c.body)
+      row[3] = rgbCopy(c.accent)
+      row[4] = rgbCopy(c.line or c.outline or c.body)
+      row[5] = c.line and "line" or "outline"
+    end
+  end
+
   local function fromRow(row)
     return { name = row[1], body = rgbCopy(row[2]), accent = rgbCopy(row[3]),
              third = rgbCopy(row[4]), style = row[5] or "outline" }
   end
 
-  local function defaultPreset(id)
-    -- The CART's own balls are this mod's to dress: its colourway is their
-    -- default.  A ball another mod ADDED is that mod's, and its default stays
-    -- whatever its author registered -- developer's call, and the same
-    -- ownership line the Gen 2 note below draws.  Too Many Balls' rows reach
-    -- us through goldSeed, so "whatever TMB says" needs no coordination and
-    -- no second copy of their table.
-    if BALL_PRESETS[id] then return fromRow(BALL_PRESETS[id][1]) end
-    local own = goldSeed(id)
-    if own then
-      return { name = "ORIGINAL", body = rgbCopy(own.body),
-               accent = rgbCopy(own.accent),
-               third = rgbCopy(own.outline), style = "outline" }
-    end
-    -- No native answer -- a Gen 1 boot, or a ball whose mod registered no
-    -- Gold palette.  resolveEntry is the Gen 1 counterpart of goldSeed: it
-    -- reads COLORS, which is where another mod's registerColors lands, so a
-    -- mod ball still defaults to its author's colour.  TMB_PRESETS is NOT a
-    -- fallback -- since 0.1.53 it holds alternates only, and defaulting to
-    -- one would hand the player a colourway nobody chose.
-    local mine = resolveEntry(id, { ball = id, surface = "editor",
-                                    game = gameRef })
-    if mine and mine.body and mine.accent then
-      return { name = "ORIGINAL", body = rgbCopy(mine.body),
-               accent = rgbCopy(mine.accent),
-               third = rgbCopy(mine.line or mine.outline or mine.body),
-               style = mine.line and "line" or "outline" }
-    end
-    local g = GENERIC_PRESETS[1]
-    return { name = g.name, body = rgbCopy(g.body), accent = rgbCopy(g.accent),
-             third = rgbCopy(g.third), style = g.style }
+  -- The CART's own balls are this mod's to dress: its colourway is their
+  -- default.  A ball another mod ADDED is that mod's and keeps whatever its
+  -- author registered, which is why this answers ONLY for BALL_PRESETS and
+  -- nil for everything else.
+  --
+  -- It used to carry goldSeed / resolveEntry / generic fallbacks below this
+  -- line.  They were unreachable: both callers gate on assertsGoldDefault,
+  -- whose first test is `BALL_PRESETS[id] ~= nil` -- the exact condition
+  -- this returns on.  Dead code describing ownership rules it never
+  -- enforced is worse than none, so it is gone and the contract is the
+  -- nil: a caller that wants a non-cart ball's colour asks goldSeed or
+  -- resolveEntry directly, as editableEntry already does.
+  local function cartDefaultPreset(id)
+    local rows = BALL_PRESETS[id]
+    if not rows then return nil end
+    return fromRow(rows[1])
   end
 
   -- Does this mod paint this ball on a Gen 2 boot with nothing saved?
   -- Only the cart's own balls, so a mod ball keeps its author's colour
   -- unless the player picks something else in the editor.
   local function assertsGoldDefault(id)
+    -- The generation test was missing, so this answered true on Red/Blue/
+    -- Yellow too and sent editableEntry's seed through BALL_PRESETS instead
+    -- of COLORS.  Harmless while the five natives agree, but BALL_PRESETS
+    -- also holds the eight Johto balls, none of which COLORS has -- so on a
+    -- Gen 1 boot the editor would have offered a colour the throw could not
+    -- draw.  Capability, not a version name, like every other gate here.
     return BALL_PRESETS[id] ~= nil
+      and gameRef and gameRef.data and gameRef.data.gen2Palettes ~= nil
       and mod.options:get("enabled")
       and mod.options:get("gen2_recolor")
   end
 
-  -- defaultPreset's {third, style} shape as the {line|outline} shape the
+  -- cartDefaultPreset's {third, style} shape as the {line|outline} shape the
   -- colour entries use.
   local function entryFromPreset(p)
     local out = { body = rgbCopy(p.body), accent = rgbCopy(p.accent) }
@@ -727,6 +834,11 @@ return function(mod)
       end
     else
       for i, g in ipairs(GENERIC_PRESETS) do out[i] = g end
+    end
+    -- Colourways other mods contributed, after this mod's own and before
+    -- ORIGINAL -- so the list reads: ours, theirs, the ball's own.
+    for _, p in ipairs(MOD_PRESETS[id] or {}) do
+      out[#out + 1] = p
     end
     -- The ball's OWN colour, kept as a named choice.  Called ORIGINAL and not
     -- GEN 2 because for a mod-added ball it is not the cart's colour at all --
@@ -746,11 +858,11 @@ return function(mod)
   local function ballCatalog(game)
     local data = game and game.data or {}
     local records = data.gen2Balls or data.balls or {}
-    -- Every ball the game knows, mod-added included.  The old SHOW MOD BALLS
-    -- toggle is gone: hiding balls you own from a list of balls you own is
-    -- not a preference, and since 0.1.52 a mod ball defaults to its author's
-    -- colour anyway, so there is nothing to hide FROM.
-    local includeMods = true
+    -- EVERY ball the game knows, mod-added included.  The SHOW MOD BALLS
+    -- toggle went in 0.1.55 -- hiding balls you own from a list of balls you
+    -- own is not a preference -- but its `includeMods` local stayed behind
+    -- hardcoded to true, which made the filter below constant and left the
+    -- VANILLA_BALLS table it consulted with no reader at all.  Both gone.
     local out, seen = {}, {}
     local function add(id)
       if seen[id] then return end
@@ -762,9 +874,7 @@ return function(mod)
         index = item and item.index or 9999,
       }
     end
-    for id in pairs(records) do
-      if VANILLA_BALLS[id] or includeMods then add(id) end
-    end
+    for id in pairs(records) do add(id) end
     -- On Gen 2 the balls REGISTRY is not where mod balls live.  Nothing at
     -- Gold's throw site reads a mod's ball record, so Too Many Balls
     -- deliberately registers only an ITEMS record there and stamps
@@ -772,7 +882,7 @@ return function(mod)
     -- which is exactly the test Gold itself uses to decide something is a
     -- ball (gen2/BattleState.lua:3181).  Walking gen2Balls alone therefore
     -- showed the player nothing but the natives.
-    if includeMods and data.items then
+    if data.items then
       for id, def in pairs(data.items) do
         if type(def) == "table" and (def.pocket == "BALL" or def.ball) then
           add(id)
@@ -813,7 +923,7 @@ return function(mod)
     -- then the ball's own palette.  Seeding from anything else is how 0.1.46
     -- ended up offering colours the game was not drawing.
     if not base and assertsGoldDefault(id) then
-      base = entryFromPreset(defaultPreset(id))
+      base = entryFromPreset(cartDefaultPreset(id))
     end
     local goldName
     if not base then base, goldName = goldSeed(id) end
@@ -903,13 +1013,15 @@ return function(mod)
       -- whatever the row says -- 0.1.44 made it merely inert, and the
       -- developer's call on 0.1.46 was that an inert row should not be on
       -- screen at all.  Every other row shifts up by one there.
+      -- Two constants, chosen between -- not two tables built on every call.
+      -- This is read from the draw path and twice per input event through
+      -- rowKind, so the old form allocated an array per lookup.
+      local ROWS_GEN2 = { "PRESET", "BODY", "ACCENT", "THIRD", "RESTORE",
+                          "DONE" }
+      local ROWS_GEN1 = { "PRESET", "STYLE", "BODY", "ACCENT", "THIRD",
+                          "RESTORE", "DONE" }
       local function editRows()
-        if isGen2(self.game) then
-          return { "PRESET", "BODY", "ACCENT", "THIRD", "RESTORE",
-                   "DONE" }
-        end
-        return { "PRESET", "STYLE", "BODY", "ACCENT", "THIRD",
-                 "RESTORE", "DONE" }
+        return isGen2(self.game) and ROWS_GEN2 or ROWS_GEN1
       end
 
       -- What the visible row at `i` means, so the handlers below never have
@@ -927,14 +1039,19 @@ return function(mod)
       local function sameRgb(a, b)
         return a and b and a[1] == b[1] and a[2] == b[2] and a[3] == b[3]
       end
+      -- STYLE is part of the match.  Without it a working entry whose style
+      -- is OUTLINE matched a "line" preset with the same three colours, so
+      -- the PRESET row named a look the STYLE row contradicted -- and A on
+      -- that row then silently flipped the style to agree with the label.
       local function matchingPreset(w, list)
         for i, p in ipairs(list or {}) do
           if sameRgb(p.body, w.body) and sameRgb(p.accent, w.accent)
-             and sameRgb(p.third, w.third) then
+             and sameRgb(p.third, w.third)
+             and (p.style == "line") == (w.style == "line") then
             return i
           end
         end
-        return 0                        -- 0 == "not a preset"; shows DEFAULT
+        return 0                        -- 0 == "not a preset"; shows CUSTOM
       end
 
       local function beginEdit()
@@ -950,7 +1067,7 @@ return function(mod)
       -- nameless DEFAULT at index 0 that meant "clear the override"; the
       -- developer's call is that a preset row should offer names, and that
       -- the game's own colours belong in the list under an obvious one --
-      -- GEN 2 -- rather than hiding behind the word default.  Index 0 now
+      -- ORIGINAL -- rather than hiding behind the word default.  Index 0 now
       -- only ever means "hand-edited RGB that matches no preset", which the
       -- row reports as CUSTOM and which cycling steps off.
       local function applyPreset()
@@ -1221,7 +1338,10 @@ return function(mod)
       local function drawCycler(text, y, changeable, rightEdge)
         text = tostring(text or "")
         rightEdge = rightEdge or CYCLER_RIGHT
-        local w = (Font.width and Font.width(text)) or (#text * 8)
+        -- `or` will not catch a ZERO width: 0 is truthy in Lua.  A zero would
+        -- put the text at rightEdge, on top of the right arrow.
+        local w = Font.width and Font.width(text)
+        if type(w) ~= "number" or w <= 0 then w = #text * 8 end
         local vx = rightEdge - w
         Font.draw(text, vx, y)
         if not changeable then return end
@@ -1229,9 +1349,21 @@ return function(mod)
         drawLeftArrow(vx - 8, y)
       end
 
+      -- Truncate on a CODEPOINT boundary.  #s and s:sub count bytes, and item
+      -- names here carry multi-byte glyphs -- POKe BALL's accented e is two
+      -- -- so a cut could leave a lone continuation byte the charmap cannot
+      -- map, drawing a stray glyph instead of a clean truncation.
       local function label(s, n)
         s = tostring(s or "")
-        return #s > n and s:sub(1, n) or s
+        if #s <= n then return s end
+        local cut = n
+        -- back off while the next byte is a UTF-8 continuation (10xxxxxx)
+        while cut > 0 do
+          local b = s:byte(cut + 1)
+          if not b or b < 0x80 or b >= 0xC0 then break end
+          cut = cut - 1
+        end
+        return s:sub(1, cut)
       end
 
       function self:draw()
@@ -1243,13 +1375,14 @@ return function(mod)
           if #balls == 0 then
             Font.draw("NO BALLS FOUND", 16, 32)
           end
+          local marked = savedOverrides()   -- once, not once per visible row
           for row = 1, VISIBLE_EDITOR_ROWS do
             local i, item = scroll + row, balls[scroll + row]
             local y = 24 + (row - 1) * 8
             if item then
               if i == selected then Font.drawCode(Theme.cursor, 8, y) end
               Font.draw(label(item.label, 12), 16, y)
-              if savedOverrides()[item.id] then Font.draw("*", 112, y) end
+              if marked[item.id] then Font.draw("*", 112, y) end
             elseif i == #balls + 1 then
               -- the RESTORE ALL row, last in the list
               if i == selected then Font.drawCode(Theme.cursor, 8, y) end
@@ -1281,8 +1414,8 @@ return function(mod)
             Font.draw(label(row, 9), 16, y)
             if row == "STYLE" then styleRowY = y end
           end
-          -- DEFAULT, not a preset name, when the colours on screen are the
-          -- ball's own.  Opening a ball applies no preset, so naming one
+          -- CUSTOM, not a preset name, when the colours on screen match no
+          -- preset.  Opening a ball applies no preset, so naming one
           -- there described nothing the player could see.
           local presetLabel = presetIndex > 0 and presets[presetIndex]
             and presets[presetIndex].name or "CUSTOM"
@@ -1324,23 +1457,97 @@ return function(mod)
         G.setColor(1, 1, 1, 1)
       end
 
+      -- ------------------------------------------------------------------
+      -- A crash in here must not take the GAME down.
+      --
+      -- This screen composes with whatever else the player runs -- UI mods
+      -- that replace menus, graphics mods that own the frame -- and a player
+      -- reported the PC crashing on a mod set nobody here can reproduce.  An
+      -- unhandled error in update or draw is a hard crash whose text the
+      -- player never sees, so the report comes back as "it crashed" and the
+      -- fault stays invisible.
+      --
+      -- So both are wrapped: the first failure is reported to [ERRS] with the
+      -- engine's own message (file and line), the screen switches to a state
+      -- that says so on screen, and B still backs out.  That turns an
+      -- unreproducible crash into a legible one without pretending to fix it.
+      local rawUpdate, rawDraw = self.update, self.draw
+      local screenError = nil
+
+      local function screenFail(where, err)
+        if screenError then return end
+        screenError = tostring(err or "?")
+        local msg = "editor " .. where .. ": " .. screenError
+        mod.log:error("%s", msg)
+        Runtime.reportError("pokeball_colors", msg)
+      end
+
+      function self:update(dt)
+        if screenError then
+          -- Only the way out still responds, so a broken screen is never a
+          -- soft-lock the player has to force-quit out of.
+          local input = game and game.input
+          if input and (input:wasPressed("b") or input:wasPressed("a"))
+             and game.stack then
+            game.stack:pop()
+          end
+          return
+        end
+        local ok, err = pcall(rawUpdate, self, dt)
+        if not ok then screenFail("update", err) end
+      end
+
+      function self:draw()
+        if not screenError then
+          local ok, err = pcall(rawDraw, self)
+          if not ok then screenFail("draw", err) end
+          if not screenError then return end
+        end
+        -- Deliberately the plainest thing that can be drawn: whatever broke
+        -- above may be the very call this would otherwise reuse.
+        local G = love.graphics
+        G.setColor(1, 1, 1, 1)
+        G.rectangle("fill", 0, 0, 160, 144)
+        G.setColor(0, 0, 0, 1)
+        local okFont = pcall(function()
+          Font.draw("BALL COLORS", 8, 8)
+          Font.draw("SEE [ERRS] IN", 8, 40)
+          Font.draw("THE MOD MENU", 8, 56)
+          Font.draw("B: EXIT", 8, 120)
+        end)
+        if not okFont then
+          -- even the font is unavailable: a bar is still a visible signal
+          G.rectangle("fill", 8, 40, 144, 8)
+        end
+        G.setColor(1, 1, 1, 1)
+      end
+
       ensureVisible()
       return self
     end,
   })
 
-  mod.hooks:wrap("ui.pc.items", function(next_, game, rows)
-    local out = next_(game, rows)
-    if type(out) ~= "table" then return out end
-    for _, row in ipairs(out) do
-      if row.id == EDITOR_PC_ROW then return out end
-    end
-    local editor = {
+  local function wantsEntry(where)
+    local pick = mod.options:get("editor_entry") or "pc"
+    return pick == where or pick == "both"
+  end
+
+  local function editorRow(game)
+    return {
       id = EDITOR_PC_ROW, label = "BALL COLORS",
       onSelect = function(_menu, liveGame)
         openColorEditor(liveGame or game)
       end,
     }
+  end
+
+  mod.hooks:wrap("ui.pc.items", function(next_, game, rows)
+    local out = next_(game, rows)
+    if type(out) ~= "table" then return out end
+    if not wantsEntry("pc") then return out end
+    for _, row in ipairs(out) do
+      if row.id == EDITOR_PC_ROW then return out end
+    end
     local at = #out + 1
     for i, row in ipairs(out) do
       if row.id == "decoration" or row.cancel or row.id == "cancel" then
@@ -1348,7 +1555,26 @@ return function(mod)
         break
       end
     end
-    table.insert(out, at, editor)
+    table.insert(out, at, editorRow(game))
+    return out
+  end)
+
+  -- The START menu alternative.  Same row shape as the PC's, and the same
+  -- guard against inserting twice if the hook runs more than once.
+  --
+  -- Placed before the LAST row rather than appended: the engine adds QUIT
+  -- immediately before calling this hook (StartMenu.lua:165-175), so the
+  -- final entry is the way out and a new row belongs above it.  A positional
+  -- guess, deliberately -- matching on the label would mean matching a
+  -- localised string.  Worst case it lands one row off, never wrong.
+  mod.hooks:wrap("ui.start_menu.items", function(next_, game, items)
+    local out = next_(game, items)
+    if type(out) ~= "table" then return out end
+    if not wantsEntry("start") then return out end
+    for _, row in ipairs(out) do
+      if row.id == EDITOR_PC_ROW then return out end
+    end
+    table.insert(out, math.max(1, #out), editorRow(game))
     return out
   end)
 
@@ -1541,7 +1767,7 @@ return function(mod)
   local artFailed = false
   local function artFail(fmt, ...)
     if artFailed then return end             -- once, not per frame
-    artFailed = true
+    artFailed = true                         -- cleared on the next game.ready
     local msg = string.format(fmt, ...)
     mod.log:warn("%s", msg)
     Runtime.reportError("pokeball_colors", msg)
@@ -1549,6 +1775,29 @@ return function(mod)
 
   local ballSrc      -- { top = grid, bottom = grid } | false
   local ballArtCache -- key -> Image
+  local ballArtCount = 0
+  -- Each entry is a GPU texture, and the RGB screen mints a fresh key per
+  -- step -- holding LEFT across one channel at STEP 1 is 256 of them.  So
+  -- the cache is bounded and the images are released rather than left for
+  -- the collector, which for a LOVE Image only frees the Lua handle.
+  local BALL_ART_CACHE_MAX = 24
+
+  local function releaseBallArt()
+    for _, img in pairs(ballArtCache or {}) do
+      if type(img) == "table" or type(img) == "userdata" then
+        pcall(function() if img.release then img:release() end end)
+      end
+    end
+    ballArtCache, ballArtCount = nil, 0
+  end
+
+  -- A new boot is a new imported cache and possibly a different generation,
+  -- so nothing derived from the old one may survive it -- and a failure on
+  -- the previous boot must not still be latched.
+  local function resetBallArt()
+    releaseBallArt()
+    ballSrc = nil
+  end
 
   -- grey value -> DMG index.  255 is index 0, which the OAM layer draws as
   -- transparent, so it stays transparent here too.
@@ -1561,7 +1810,6 @@ return function(mod)
 
   local function ballSource(game)
     if ballSrc ~= nil then return ballSrc or nil end
-    ballSrc = false
     -- The two generations file this table under DIFFERENT keys, which is
     -- the whole reason 0.1.44's preview silently fell back to primitives on
     -- Gold: Gen 1 is game.data.battle_anims (BattleState.lua:670 hands it
@@ -1570,9 +1818,14 @@ return function(mod)
     local data = game and game.data
     local anims = data and (data.gen2BattleAnims or data.battle_anims)
     if not (anims and love and love.image) then
+      -- Deliberately NOT latched: "the table is not there yet" is a timing
+      -- answer, not a verdict.  Latching it meant one early open of the
+      -- editor disabled the real preview for the whole session, with the
+      -- one-shot artFail suppressing any further explanation.
       artFail("ball preview: no battle_anims table on this boot")
       return nil
     end
+    ballSrc = false                          -- a read was genuinely attempted
     local ok, res = pcall(function()
       local path, topTile, botTile
       local gfx = anims.gfx and anims.gfx.BATTLE_ANIM_GFX_POKE_BALL
@@ -1679,7 +1932,10 @@ return function(mod)
       artFail("ball preview: bake failed (%s)", tostring(image))
       return nil
     end
+    if ballArtCount >= BALL_ART_CACHE_MAX then releaseBallArt() end
+    ballArtCache = ballArtCache or {}
     ballArtCache[key] = image
+    ballArtCount = ballArtCount + 1
     return image
   end
 
@@ -1768,9 +2024,14 @@ return function(mod)
     local entry = resolveEntry(ball, { ball = ball, surface = "battle",
                                        battle = activeBattle, game = gameRef })
     if not entry then return nil end
+    -- The key carries BOTH third-colour flavours and which one is set.  It
+    -- used to carry `line` only, so two balls sharing a body and accent but
+    -- differing in `outline` collided and the second was served the first's
+    -- bake.
     local key = table.concat(entry.body, ",") .. "/"
       .. table.concat(entry.accent, ",") .. "/"
-      .. (entry.line and table.concat(entry.line, ",") or "-")
+      .. (entry.line and ("L" .. table.concat(entry.line, ",")) or "")
+      .. (entry.outline and ("O" .. table.concat(entry.outline, ",")) or "")
     local hit = bakedCache[key]
     if hit ~= nil then return hit or nil end
     bakedCache[key] = false
@@ -1785,20 +2046,47 @@ return function(mod)
     local ok, img = pcall(function()
       local id = love.image.newImageData(sheet.path)
       local cols = math.floor(id:getWidth() / 8)
-      -- baked art is built from the VANILLA sheet, where index 3 is the
-      -- outline ring -- so a `line` ball's band cannot appear here and its
-      -- colour lands on the rim instead.  An `outline` ball is exact.
+      -- The bake reads the VANILLA sheet, where DMG index 3 is the perimeter
+      -- RING -- there is no index for the seam.  So a `line` ball used to
+      -- have its third colour land on the rim and the STYLE row said BAND
+      -- while an outline came out, with nothing reporting the difference.
+      --
+      -- Doing the re-index and the bake in ONE pass fixes that: BAND_TILES
+      -- already names, per tile, which pixels are the seam (`line`) and which
+      -- are the ring (`body`), which is exactly what bandSheet re-indexes.
+      -- Here those two sets are simply painted directly -- seam takes the
+      -- third colour, ring joins the body -- and everything else still maps
+      -- by grey.  Same result as re-indexing then baking, one pass.
+      --
+      -- Still the vanilla SHAPE: this reads the engine's own sheet by design,
+      -- so a ball mod's artwork is not carried through a takeover.  Putting
+      -- our band on someone else's art would mean deriving the seam from the
+      -- sheet they serve, which is a different job.
+      local banded = entry.line ~= nil
       local slot = { entry.accent, entry.body,
-                     entry.line or entry.outline or entry.body }
-      for tile in pairs(BAND_TILES) do
+                     banded and entry.body
+                       or (entry.outline or entry.line or entry.body) }
+      for tile, spec in pairs(BAND_TILES) do
         local tx, ty = (tile % cols) * 8, math.floor(tile / cols) * 8
+        local seam, ring = nil, nil
+        if banded then
+          seam, ring = {}, {}
+          for _, q in ipairs(spec.line) do seam[q[2] * 8 + q[1]] = true end
+          for _, q in ipairs(spec.body) do ring[q[2] * 8 + q[1]] = true end
+        end
         for y = 0, 7 do
           for x = 0, 7 do
             local r, _, _, a = id:getPixel(tx + x, ty + y)
             if a > 0 then
-              -- 170 / 85 / 0 are DMG indices 1 / 2 / 3 (gfx.py GB_SHADES)
-              local index = (r > 0.66 and 1) or (r > 0.16 and 2) or 3
-              local c = slot[index]
+              local at = y * 8 + x
+              local c
+              if seam and seam[at] then c = entry.line
+              elseif ring and ring[at] then c = entry.body
+              else
+                -- 170 / 85 / 0 are DMG indices 1 / 2 / 3 (gfx.py GB_SHADES)
+                local index = (r > 0.66 and 1) or (r > 0.16 and 2) or 3
+                c = slot[index]
+              end
               id:setPixel(tx + x, ty + y,
                           c[1] / 255, c[2] / 255, c[3] / 255, 1)
             end
@@ -1907,15 +2195,49 @@ return function(mod)
   --
   -- Detection still runs, but only for the OFF case, where the question is
   -- "should we stand aside" rather than "may we act".
+  -- ------------------------------------------------------------------
+  -- THE WIDE BATTLE LAYOUT NEEDS THE BAKED SHEET.
+  --
+  -- WideBattle draws the OAM anim layer as `battle:drawAnimLayer(false)`
+  -- (WideBattle.lua:346 at engine 0.2.55), and drawAnimLayer only builds a
+  -- colorFn when that flag is true -- so animSpriteColors, and with it this
+  -- mod's whole palette path, is never called in a wide battle.  The ball
+  -- draws in the sheet's raw greys.
+  --
+  -- That is not an engine oversight to wrap around: the wide surface
+  -- resolves its own colours and takes the trueColor opt-out over the whole
+  -- composition (WideBattle.zones), so it is a TRUE-COLOUR surface by
+  -- design.  Forcing colorized=true would fight that.  Baked pixels are
+  -- exactly what such a surface wants, and we already build them.
+  --
+  -- Found because the developer saw coloured balls in a wide battle on PC
+  -- and grey ones on the phone with the same engine and the same mod --
+  -- MY BALL COLORS OVER OTHER MODS happened to be on for one and off for
+  -- the other, and that option is the only thing that was reaching the
+  -- baked path.  So the fix is to reach it for the layout as well.
+  --
+  -- Read from the save rather than from a battle handle: this is asked
+  -- during the anim draw, and isWideBattleLayout is itself only this test
+  -- (BattleState.lua:72).
+  local function wideBattleActive()
+    local opts = gameRef and gameRef.save and gameRef.save.options
+    return (opts and opts.battleLayout == "wide") or false
+  end
+
   AnimPlayer.sheetImage = function(self, ts)
     if ts == 0 and self._pbcMove and BALL_MOVES[self._pbcMove]
        and mod.options:get("enabled") and PaletteFX.mode == "redpp" then
       local ball = ballOf(self)
       if ball then
-        if mod.options:get("ball_art_takeover") then
+        -- Baked first, and for EITHER reason: the player asked to win over
+        -- another mod, or the layout gives us no palette pass to win with.
+        if mod.options:get("ball_art_takeover") or wideBattleActive() then
           local img = bakedSheet(self, ball)
           if img then return img end
-        elseif not conflictDetected and bandColor(ball) then
+        end
+        -- Falls through when the bake is unavailable, so a wide battle still
+        -- gets the band sheet rather than nothing.
+        if not conflictDetected and bandColor(ball) then
           local img = bandSheet(self)
           if img then return img end
         end
@@ -1970,11 +2292,18 @@ return function(mod)
     -- { 3, 0, 3 }, which swaps indices 1 and 2 and leaves index 3 on the
     -- dark shade, so a band that held still through the Master/Ultra
     -- flash is what the hardware does.
-    -- Under takeover the sheet ALREADY carries our colours as real pixels,
-    -- so a palette pass would remap them through the shader's red-channel
-    -- buckets and wreck them -- a baked red body reads as the transparent
-    -- slot.  Returning nil is what tells drawSprites to blit as-is.
-    if mod.options:get("ball_art_takeover") then
+    -- Whenever the sheet ALREADY carries our colours as real pixels, a
+    -- palette pass would remap them through the shader's red-channel buckets
+    -- and wreck them -- a baked red body reads as the transparent slot.
+    -- Returning nil is what tells drawSprites to blit as-is.
+    --
+    -- The condition MUST match sheetImage's exactly, and since 0.1.70 that is
+    -- takeover OR the wide layout.  Wide normally never reaches here at all
+    -- (drawAnimLayer(false) builds no colorFn), but Pokeball Colorfix wraps
+    -- drawAnimLayer to force colorized=true in wide -- so with that mod
+    -- installed this IS reached while a baked sheet is being served, and
+    -- suppressing on takeover alone would double-apply and wreck the ball.
+    if mod.options:get("ball_art_takeover") or wideBattleActive() then
       bandColorRan = true
       return nil
     end
@@ -2117,7 +2446,16 @@ return function(mod)
     end
   end)
 
-  mod.events:on("game.ready", function(p) gameRef = p and p.game end)
+  mod.events:on("game.ready", function(p)
+    gameRef = p and p.game
+    -- A different save and possibly a different generation: the override
+    -- cache, the ball art and the one-shot failure latch are all derived
+    -- from the boot that just ended and none of them may outlive it.
+    invalidateOverrides()
+    resetBallArt()
+    artFailed = false
+    seedFailed = {}
+  end)
 
   -- ------------------------------------------------------------------
   -- The draw seam.  fxHeal is a LOCAL closure inside
@@ -2348,21 +2686,37 @@ return function(mod)
       -- declares exports.owns.ballPalettesGen2; overriding it unasked would
       -- cross that line.
       if not entry and assertsGoldDefault(ballId) then
-        entry = entryFromPreset(defaultPreset(ballId))
+        entry = entryFromPreset(cartDefaultPreset(ballId))
       end
       if not entry then return nil end
       local third = entry.line or entry.outline or entry.body
       local name = CUSTOM_GOLD_PREFIX .. tostring(ballId)
       local set = game.data and game.data.gen2Palettes
         and game.data.gen2Palettes.battleObjects
-      if set then
-        set[name] = {
-          { 255, 255, 255 }, rgbCopy(entry.accent),
-          rgbCopy(entry.body), rgbCopy(third),
-        }
-        return name
+      if not set then return nil end
+      -- Write only on a real change.  drawHealAnim asks nameFor once per ball
+      -- per frame and reaches this, so an unconditional assignment rewrote
+      -- shared engine palette data at frame rate -- and made a question
+      -- ("what colour is this ball?") mutate the thing being asked about,
+      -- which goldSeed and the editor both call expecting only an answer.
+      local want = {
+        { 255, 255, 255 }, rgbCopy(entry.accent),
+        rgbCopy(entry.body), rgbCopy(third),
+      }
+      local have = set[name]
+      local same = type(have) == "table" and #have == #want
+      if same then
+        for i = 1, #want do
+          local a, b = have[i], want[i]
+          if type(a) ~= "table" or a[1] ~= b[1] or a[2] ~= b[2]
+             or a[3] ~= b[3] then
+            same = false
+            break
+          end
+        end
       end
-      return nil
+      if not same then set[name] = want end
+      return name
     end
 
     BS2._pbcEditorOriginals = BS2._pbcEditorOriginals
@@ -2389,16 +2743,20 @@ return function(mod)
     goldPinFor = function(ballId, mon, battle)
       local name = nameFor(ballId, battle)
       if not name then return nil, nil end
-      -- A custom row is mutable while the player edits it. Snapshot the row
-      -- onto the caught mon so the heal machine preserves the colour that was
-      -- actually thrown, even if this ball is redesigned later.
+      -- NEVER pin a row this mod owns.  0.1.38 snapshotted it, reasoning that
+      -- a custom row is mutable while the player edits it -- but that predates
+      -- the rule 0.1.43 settled on and 0.1.53 finished: a colour this mod
+      -- controls is LIVE, and only a resolver's answer is pinned.
+      --
+      -- Since 0.1.52 the name can be PBC_CUSTOM_ with NOTHING saved, because
+      -- gen2_recolor asserts the cart balls' default. The catch handler lets
+      -- goldPinFor run in that case (savedEntry is nil), so the asserted
+      -- colour was frozen onto the mon as a row. Pressing RESTORE then made
+      -- savedEntry nil again while the frozen row still outranked the live
+      -- lookup, and that Pokemon's heal-machine ball kept a colour nothing
+      -- else in the game was using.
       if name:sub(1, #CUSTOM_GOLD_PREFIX) == CUSTOM_GOLD_PREFIX then
-        local row = rowForName(name)
-        if row then
-          local copy = {}
-          for i = 1, #row do copy[i] = rgbCopy(row[i]) end
-          return nil, copy
-        end
+        return nil, nil
       end
       if rowForName(name) then return name, nil end          -- plain: pin the name
       if okPal and Palettes and Palettes.monColors and mon and mon.species then

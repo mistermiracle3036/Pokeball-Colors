@@ -4,6 +4,109 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.71
+
+**Updating from v0.1.64?** This is a fix release for the ball colour editor
+that release introduced, plus one new setting.
+
+### Fixes
+
+- **A Pokemon caught in a ball you had not customized could keep an
+  out-of-date colour on the heal machine.** Catching stored the colour that
+  ball had at the time, so pressing RESTORE later left that Pokemon showing
+  the old one while every other ball moved on. Nothing needs re-catching.
+- **Balls were grey in the WIDE battle layout.** That layout draws its
+  animation without the colour pass this mod normally uses, so colours never
+  reached it -- unless MY BALL COLORS OVER OTHER MODS happened to be on,
+  which took a different route. Wide battles now use that route
+  automatically.
+- **With MY BALL COLORS OVER OTHER MODS on, a ball set to BAND came out with
+  a rim instead**, and nothing said so.
+- **The preset name could disagree with the STYLE row**, naming a preset
+  whose band-or-rim setting was not the one actually applied.
+- **The BALL COLORS screen can no longer crash the game.** If something goes
+  wrong while it is open -- most likely another mod that replaces menus -- it
+  shows a short message, writes the reason to [ERRS] in the mod menu, and
+  lets you press B to leave.
+- A ball name with an accented character could be cut in the middle of it in
+  the list, drawing a stray symbol.
+- Ball colours are read from your save far less often, and the editor no
+  longer builds up images as you scrub an RGB channel.
+- If the ball artwork cannot be loaded, the editor tries again on your next
+  boot instead of staying on the simplified swatch for the session.
+
+### New
+
+- **BALL COLORS MENU IS IN** -- choose **PC** (the default), **START MENU**,
+  or **BOTH**. Nothing moves unless you move it; this is for players whose PC
+  is replaced by another mod.
+
+### For mod authors
+
+- `registerPreset(ballId, name, entry)` lets another mod contribute a named
+  colourway to the editor beside this mod's own, so two mods with an opinion
+  about the same ball no longer have to fight over it. See the README.
+
+## 0.1.70
+
+- **Fixed: balls were grey in the WIDE battle layout.** That layout draws its
+  animation without the colour pass this mod normally uses, so ball colours
+  never reached it -- unless you happened to have MY BALL COLORS OVER OTHER
+  MODS switched on, which took a different route. Wide battles now use that
+  route automatically, so the setting no longer changes whether colours
+  appear.
+
+## 0.1.69
+
+- **Other mods can now contribute their own colour schemes to the BALL COLORS
+  menu.** If a mod you have installed has its own idea of what a Poke Ball
+  should look like, it can offer that as a named choice next to ours instead
+  of the two mods fighting over the ball. Nothing changes unless a mod uses
+  it.
+
+## 0.1.68
+
+- **Fixed: with MY BALL COLORS OVER OTHER MODS turned on, a ball set to BAND
+  came out with a rim instead** -- and nothing said so. The band now appears
+  where it should. This only affects players running another mod that colours
+  or replaces Poke Ball art.
+- Fixed a related case where two balls sharing a body and accent colour but
+  differing in their outline colour could be drawn with the wrong one.
+
+## 0.1.67
+
+- **The BALL COLORS screen can no longer crash the game.** If something goes
+  wrong while it is open -- most likely another mod that replaces menus -- it
+  now shows a short message, writes the reason to [ERRS] in the mod menu, and
+  lets you press B to leave. If you have hit a crash opening it, this build
+  will tell us what actually broke.
+
+## 0.1.66
+
+- **You can now open BALL COLORS from the START menu instead of the PC.** A
+  new setting, **BALL COLORS MENU IS IN**, offers PC (the default), START
+  MENU, or BOTH. Nothing moves unless you move it -- this is for players
+  whose PC is replaced by another mod.
+
+## 0.1.65
+
+Fixes from a code review of everything released in 0.1.64.
+
+- **Fixed: a Pokemon caught in a ball you had not customized could keep an
+  out-of-date colour on the heal machine.** Catching stored the colour that
+  ball had at the time; pressing RESTORE later left that Pokemon showing it
+  while every other ball moved on. Nothing needs re-catching -- the stored
+  colour is simply no longer written or read.
+- **Fixed: the preset name could disagree with the STYLE row**, naming a
+  preset whose band-or-rim setting was not the one actually applied.
+- **Fixed: a ball name containing an accented character could be cut in the
+  middle of it** in the ball list, drawing a stray symbol.
+- Ball colours are read from your save far less often -- they were being
+  looked up once per sprite per frame during every throw.
+- The colour editor no longer builds up images as you scrub an RGB channel.
+- If the ball artwork cannot be loaded, the editor tries again on your next
+  boot instead of staying on the simplified swatch for the session.
+
 ## 0.1.64
 
 **Everything here is new since v0.1.33**, the last version you would have
