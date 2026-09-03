@@ -263,6 +263,34 @@ dark rim around the edge. Set one or the other; if you set both, `line`
 wins. The native ULTRA BALL uses `outline` — two shades of gold with a
 black rim — which is why its throw shimmers rather than blinking.
 
+### Recolouring a ball this mod already owns
+
+`registerColors` sets a ball's **default**, and it never overwrites one that
+already exists — so if your mod recolours the five native balls, every entry
+comes back skipped. That is deliberate for defaults, and no use if you have
+your own palette for a ball we also carry.
+
+Contribute a **named preset** instead. It appears in the PC's BALL COLORS
+menu beside ours and the player picks:
+
+```lua
+local pbc = mod.find("pokeball_colors")
+if pbc and pbc.exports and pbc.exports.registerPreset then
+  pbc.exports.registerPreset("POKE_BALL", "MY MOD",
+    { body = {224,72,56}, accent = {248,216,208}, outline = {24,24,24} })
+end
+```
+
+Nothing is overwritten and nothing has to yield, so two mods with an opinion
+about the Poké Ball stop being a conflict. Registering the same name twice on
+one ball is a no-op rather than a redefinition. Call it at `game.ready`.
+
+**If you are porting from a wrap of `animSpriteColors`**, mind the naming: it
+returns `{ index1, index2, index3 }` positionally, where index 1 is the lower
+crescent (our `accent`), index 2 the upper mass (our `body`) and index 3 the
+rim (our `outline`). The order is the same; only the names differ, and
+crossing them produces a plausible-looking but inverted ball.
+
 ### Balls whose colour is not fixed
 
 If a ball's colour depends on something — the target, the terrain, a roll

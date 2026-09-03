@@ -4,6 +4,14 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.69
+
+- **Other mods can now contribute their own colour schemes to the BALL COLORS
+  menu.** If a mod you have installed has its own idea of what a Poke Ball
+  should look like, it can offer that as a named choice next to ours instead
+  of the two mods fighting over the ball. Nothing changes unless a mod uses
+  it.
+
 ## 0.1.68
 
 - **Fixed: with MY BALL COLORS OVER OTHER MODS turned on, a ball set to BAND

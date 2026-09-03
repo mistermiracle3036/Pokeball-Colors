@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.68"
+  local VERSION = "0.1.69"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -300,6 +300,7 @@ return function(mod)
     caughtBallPaletteField = "mon.caughtBallPalette",
     caughtBallPaletteRowField = "mon.caughtBallPaletteRow",
     colorResolvers = true,
+    colorPresets = true,           -- exports.registerPreset
     colorEditorSave = COLOR_SAVE_KEY,
     colorEditorScreen = EDITOR_SCREEN,
   }
@@ -454,6 +455,66 @@ return function(mod)
   local RESOLVERS = {}
   local resolverDead = {}
   throwCache = {}
+
+  -- ------------------------------------------------------------------
+  -- PRESETS REGISTERED BY OTHER MODS.
+  --
+  -- registerColors sets a ball's DEFAULT and deliberately never clobbers one
+  -- that exists, so a mod wanting to recolour a ball this mod already owns --
+  -- the five natives, which is exactly the overlap -- finds every entry
+  -- silently skipped.  That is correct for defaults and useless for this
+  -- case.
+  --
+  -- So a second, additive door: contribute a NAMED colourway that appears in
+  -- the editor beside this mod's own, and let the player choose.  Nothing is
+  -- overwritten, nothing has to yield, and two mods with an opinion about the
+  -- Poke Ball stop being a conflict at all.
+  --
+  --   local pbc = mod.find("pokeball_colors")
+  --   if pbc and pbc.exports and pbc.exports.registerPreset then
+  --     pbc.exports.registerPreset("POKE_BALL", "COLORFIX",
+  --       { body = {224,72,56}, accent = {248,216,208}, outline = {24,24,24} })
+  --   end
+  --
+  -- The entry is the same shape registerColors takes, so there is one colour
+  -- shape across this whole API.  NOTE for anyone porting from a wrap of
+  -- animSpriteColors: that returns { index1, index2, index3 } positionally,
+  -- where index 1 is the lower crescent (our `accent`), index 2 the upper
+  -- mass (our `body`) and index 3 the rim (our `outline`).  Position order is
+  -- the same; only the names differ, and getting it backwards produces a
+  -- plausible-looking but inverted ball.
+  local MOD_PRESETS = {}
+
+  mod.exports.registerPreset = function(ballId, name, entry)
+    if type(ballId) ~= "string" or ballId == ""
+       or type(name) ~= "string" or name == "" then
+      mod.log:warn("registerPreset: need a ball id and a preset name")
+      return false
+    end
+    if not validColor(entry) then
+      mod.log:warn("registerPreset: bad colour for %s/%s (need "
+        .. "{ body = {r,g,b}, accent = {r,g,b}, line|outline optional })",
+        ballId, name)
+      return false
+    end
+    local list = MOD_PRESETS[ballId]
+    if not list then list = {} MOD_PRESETS[ballId] = list end
+    for _, existing in ipairs(list) do
+      if existing.name == name then
+        -- non-clobber, matching registerColors: a repeated call is a no-op
+        -- rather than a silent redefinition of someone else's row
+        return false
+      end
+    end
+    list[#list + 1] = {
+      name = name,
+      body = rgbCopy(entry.body), accent = rgbCopy(entry.accent),
+      third = rgbCopy(entry.line or entry.outline or entry.body),
+      style = entry.line and "line" or "outline",
+    }
+    mod.log:info("registerPreset: %s gained the preset %s", ballId, name)
+    return true
+  end
 
   mod.exports.registerColorResolver = function(id, fn)
     if type(id) ~= "string" or id == "" or type(fn) ~= "function" then
@@ -773,6 +834,11 @@ return function(mod)
       end
     else
       for i, g in ipairs(GENERIC_PRESETS) do out[i] = g end
+    end
+    -- Colourways other mods contributed, after this mod's own and before
+    -- ORIGINAL -- so the list reads: ours, theirs, the ball's own.
+    for _, p in ipairs(MOD_PRESETS[id] or {}) do
+      out[#out + 1] = p
     end
     -- The ball's OWN colour, kept as a named choice.  Called ORIGINAL and not
     -- GEN 2 because for a mod-added ball it is not the cart's colour at all --
