@@ -4,6 +4,15 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.70
+
+- **Fixed: balls were grey in the WIDE battle layout.** That layout draws its
+  animation without the colour pass this mod normally uses, so ball colours
+  never reached it -- unless you happened to have MY BALL COLORS OVER OTHER
+  MODS switched on, which took a different route. Wide battles now use that
+  route automatically, so the setting no longer changes whether colours
+  appear.
+
 ## 0.1.69
 
 - **Other mods can now contribute their own colour schemes to the BALL COLORS

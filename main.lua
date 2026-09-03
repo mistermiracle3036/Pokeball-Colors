@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.69"
+  local VERSION = "0.1.70"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -2195,15 +2195,49 @@ return function(mod)
   --
   -- Detection still runs, but only for the OFF case, where the question is
   -- "should we stand aside" rather than "may we act".
+  -- ------------------------------------------------------------------
+  -- THE WIDE BATTLE LAYOUT NEEDS THE BAKED SHEET.
+  --
+  -- WideBattle draws the OAM anim layer as `battle:drawAnimLayer(false)`
+  -- (WideBattle.lua:346 at engine 0.2.55), and drawAnimLayer only builds a
+  -- colorFn when that flag is true -- so animSpriteColors, and with it this
+  -- mod's whole palette path, is never called in a wide battle.  The ball
+  -- draws in the sheet's raw greys.
+  --
+  -- That is not an engine oversight to wrap around: the wide surface
+  -- resolves its own colours and takes the trueColor opt-out over the whole
+  -- composition (WideBattle.zones), so it is a TRUE-COLOUR surface by
+  -- design.  Forcing colorized=true would fight that.  Baked pixels are
+  -- exactly what such a surface wants, and we already build them.
+  --
+  -- Found because the developer saw coloured balls in a wide battle on PC
+  -- and grey ones on the phone with the same engine and the same mod --
+  -- MY BALL COLORS OVER OTHER MODS happened to be on for one and off for
+  -- the other, and that option is the only thing that was reaching the
+  -- baked path.  So the fix is to reach it for the layout as well.
+  --
+  -- Read from the save rather than from a battle handle: this is asked
+  -- during the anim draw, and isWideBattleLayout is itself only this test
+  -- (BattleState.lua:72).
+  local function wideBattleActive()
+    local opts = gameRef and gameRef.save and gameRef.save.options
+    return (opts and opts.battleLayout == "wide") or false
+  end
+
   AnimPlayer.sheetImage = function(self, ts)
     if ts == 0 and self._pbcMove and BALL_MOVES[self._pbcMove]
        and mod.options:get("enabled") and PaletteFX.mode == "redpp" then
       local ball = ballOf(self)
       if ball then
-        if mod.options:get("ball_art_takeover") then
+        -- Baked first, and for EITHER reason: the player asked to win over
+        -- another mod, or the layout gives us no palette pass to win with.
+        if mod.options:get("ball_art_takeover") or wideBattleActive() then
           local img = bakedSheet(self, ball)
           if img then return img end
-        elseif not conflictDetected and bandColor(ball) then
+        end
+        -- Falls through when the bake is unavailable, so a wide battle still
+        -- gets the band sheet rather than nothing.
+        if not conflictDetected and bandColor(ball) then
           local img = bandSheet(self)
           if img then return img end
         end
@@ -2258,11 +2292,18 @@ return function(mod)
     -- { 3, 0, 3 }, which swaps indices 1 and 2 and leaves index 3 on the
     -- dark shade, so a band that held still through the Master/Ultra
     -- flash is what the hardware does.
-    -- Under takeover the sheet ALREADY carries our colours as real pixels,
-    -- so a palette pass would remap them through the shader's red-channel
-    -- buckets and wreck them -- a baked red body reads as the transparent
-    -- slot.  Returning nil is what tells drawSprites to blit as-is.
-    if mod.options:get("ball_art_takeover") then
+    -- Whenever the sheet ALREADY carries our colours as real pixels, a
+    -- palette pass would remap them through the shader's red-channel buckets
+    -- and wreck them -- a baked red body reads as the transparent slot.
+    -- Returning nil is what tells drawSprites to blit as-is.
+    --
+    -- The condition MUST match sheetImage's exactly, and since 0.1.70 that is
+    -- takeover OR the wide layout.  Wide normally never reaches here at all
+    -- (drawAnimLayer(false) builds no colorFn), but Pokeball Colorfix wraps
+    -- drawAnimLayer to force colorized=true in wide -- so with that mod
+    -- installed this IS reached while a baked sheet is being served, and
+    -- suppressing on takeover alone would double-apply and wreck the ball.
+    if mod.options:get("ball_art_takeover") or wideBattleActive() then
       bandColorRan = true
       return nil
     end
