@@ -4,6 +4,13 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.66
+
+- **You can now open BALL COLORS from the START menu instead of the PC.** A
+  new setting, **BALL COLORS MENU IS IN**, offers PC (the default), START
+  MENU, or BOTH. Nothing moves unless you move it -- this is for players
+  whose PC is replaced by another mod.
+
 ## 0.1.65
 
 Fixes from a code review of everything released in 0.1.64.

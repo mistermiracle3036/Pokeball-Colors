@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.65"
+  local VERSION = "0.1.66"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -84,6 +84,22 @@ return function(mod)
       -- and naming one of the three in a setting that governs all of them
       -- reads as though the other two are excluded.
       label = "Recolor balls in GEN 2 games", default = true },
+    -- WHERE the editor is reached from.  A player reported the PC crashing
+    -- with a mod that replaces it, and suggested moving the editor into the
+    -- mod's own settings -- which the engine cannot do: ManagerState renders
+    -- only `toggle` and `choice` rows (ManagerState.lua:1057/1067) and has no
+    -- row type that can push a screen.  The START menu can, through the same
+    -- {label, onSelect} shape the PC uses, and it is the safer of the two: it
+    -- caps and scrolls at maxVisible (StartMenu.lua:192) whereas the Gen 1 PC
+    -- sizes its box as `#items * 2 + 2` with no bound at all.
+    --
+    -- Default stays PC -- developer's preference -- so nobody's muscle memory
+    -- moves.  Entries are read POSITIONALLY: [1] displays, [2] is stored.
+    { key = "editor_entry", type = "choice",
+      label = "BALL COLORS menu is in",
+      choices = { { "PC", "pc" }, { "START MENU", "start" },
+                  { "BOTH", "both" } },
+      default = "pc" },
     { key = "dev_all_balls_in_marts", type = "toggle",
       label = "DEV: every ball sold in marts", default = false },
   })
@@ -1380,18 +1396,27 @@ return function(mod)
     end,
   })
 
-  mod.hooks:wrap("ui.pc.items", function(next_, game, rows)
-    local out = next_(game, rows)
-    if type(out) ~= "table" then return out end
-    for _, row in ipairs(out) do
-      if row.id == EDITOR_PC_ROW then return out end
-    end
-    local editor = {
+  local function wantsEntry(where)
+    local pick = mod.options:get("editor_entry") or "pc"
+    return pick == where or pick == "both"
+  end
+
+  local function editorRow(game)
+    return {
       id = EDITOR_PC_ROW, label = "BALL COLORS",
       onSelect = function(_menu, liveGame)
         openColorEditor(liveGame or game)
       end,
     }
+  end
+
+  mod.hooks:wrap("ui.pc.items", function(next_, game, rows)
+    local out = next_(game, rows)
+    if type(out) ~= "table" then return out end
+    if not wantsEntry("pc") then return out end
+    for _, row in ipairs(out) do
+      if row.id == EDITOR_PC_ROW then return out end
+    end
     local at = #out + 1
     for i, row in ipairs(out) do
       if row.id == "decoration" or row.cancel or row.id == "cancel" then
@@ -1399,7 +1424,26 @@ return function(mod)
         break
       end
     end
-    table.insert(out, at, editor)
+    table.insert(out, at, editorRow(game))
+    return out
+  end)
+
+  -- The START menu alternative.  Same row shape as the PC's, and the same
+  -- guard against inserting twice if the hook runs more than once.
+  --
+  -- Placed before the LAST row rather than appended: the engine adds QUIT
+  -- immediately before calling this hook (StartMenu.lua:165-175), so the
+  -- final entry is the way out and a new row belongs above it.  A positional
+  -- guess, deliberately -- matching on the label would mean matching a
+  -- localised string.  Worst case it lands one row off, never wrong.
+  mod.hooks:wrap("ui.start_menu.items", function(next_, game, items)
+    local out = next_(game, items)
+    if type(out) ~= "table" then return out end
+    if not wantsEntry("start") then return out end
+    for _, row in ipairs(out) do
+      if row.id == EDITOR_PC_ROW then return out end
+    end
+    table.insert(out, math.max(1, #out), editorRow(game))
     return out
   end)
 
