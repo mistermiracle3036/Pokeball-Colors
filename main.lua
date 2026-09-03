@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.67"
+  local VERSION = "0.1.68"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -1958,9 +1958,14 @@ return function(mod)
     local entry = resolveEntry(ball, { ball = ball, surface = "battle",
                                        battle = activeBattle, game = gameRef })
     if not entry then return nil end
+    -- The key carries BOTH third-colour flavours and which one is set.  It
+    -- used to carry `line` only, so two balls sharing a body and accent but
+    -- differing in `outline` collided and the second was served the first's
+    -- bake.
     local key = table.concat(entry.body, ",") .. "/"
       .. table.concat(entry.accent, ",") .. "/"
-      .. (entry.line and table.concat(entry.line, ",") or "-")
+      .. (entry.line and ("L" .. table.concat(entry.line, ",")) or "")
+      .. (entry.outline and ("O" .. table.concat(entry.outline, ",")) or "")
     local hit = bakedCache[key]
     if hit ~= nil then return hit or nil end
     bakedCache[key] = false
@@ -1975,20 +1980,47 @@ return function(mod)
     local ok, img = pcall(function()
       local id = love.image.newImageData(sheet.path)
       local cols = math.floor(id:getWidth() / 8)
-      -- baked art is built from the VANILLA sheet, where index 3 is the
-      -- outline ring -- so a `line` ball's band cannot appear here and its
-      -- colour lands on the rim instead.  An `outline` ball is exact.
+      -- The bake reads the VANILLA sheet, where DMG index 3 is the perimeter
+      -- RING -- there is no index for the seam.  So a `line` ball used to
+      -- have its third colour land on the rim and the STYLE row said BAND
+      -- while an outline came out, with nothing reporting the difference.
+      --
+      -- Doing the re-index and the bake in ONE pass fixes that: BAND_TILES
+      -- already names, per tile, which pixels are the seam (`line`) and which
+      -- are the ring (`body`), which is exactly what bandSheet re-indexes.
+      -- Here those two sets are simply painted directly -- seam takes the
+      -- third colour, ring joins the body -- and everything else still maps
+      -- by grey.  Same result as re-indexing then baking, one pass.
+      --
+      -- Still the vanilla SHAPE: this reads the engine's own sheet by design,
+      -- so a ball mod's artwork is not carried through a takeover.  Putting
+      -- our band on someone else's art would mean deriving the seam from the
+      -- sheet they serve, which is a different job.
+      local banded = entry.line ~= nil
       local slot = { entry.accent, entry.body,
-                     entry.line or entry.outline or entry.body }
-      for tile in pairs(BAND_TILES) do
+                     banded and entry.body
+                       or (entry.outline or entry.line or entry.body) }
+      for tile, spec in pairs(BAND_TILES) do
         local tx, ty = (tile % cols) * 8, math.floor(tile / cols) * 8
+        local seam, ring = nil, nil
+        if banded then
+          seam, ring = {}, {}
+          for _, q in ipairs(spec.line) do seam[q[2] * 8 + q[1]] = true end
+          for _, q in ipairs(spec.body) do ring[q[2] * 8 + q[1]] = true end
+        end
         for y = 0, 7 do
           for x = 0, 7 do
             local r, _, _, a = id:getPixel(tx + x, ty + y)
             if a > 0 then
-              -- 170 / 85 / 0 are DMG indices 1 / 2 / 3 (gfx.py GB_SHADES)
-              local index = (r > 0.66 and 1) or (r > 0.16 and 2) or 3
-              local c = slot[index]
+              local at = y * 8 + x
+              local c
+              if seam and seam[at] then c = entry.line
+              elseif ring and ring[at] then c = entry.body
+              else
+                -- 170 / 85 / 0 are DMG indices 1 / 2 / 3 (gfx.py GB_SHADES)
+                local index = (r > 0.66 and 1) or (r > 0.16 and 2) or 3
+                c = slot[index]
+              end
               id:setPixel(tx + x, ty + y,
                           c[1] / 255, c[2] / 255, c[3] / 255, 1)
             end

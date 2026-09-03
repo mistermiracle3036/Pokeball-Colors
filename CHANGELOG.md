@@ -4,6 +4,15 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.68
+
+- **Fixed: with MY BALL COLORS OVER OTHER MODS turned on, a ball set to BAND
+  came out with a rim instead** -- and nothing said so. The band now appears
+  where it should. This only affects players running another mod that colours
+  or replaces Poke Ball art.
+- Fixed a related case where two balls sharing a body and accent colour but
+  differing in their outline colour could be drawn with the wrong one.
+
 ## 0.1.67
 
 - **The BALL COLORS screen can no longer crash the game.** If something goes
