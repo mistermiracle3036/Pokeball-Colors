@@ -4,6 +4,14 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.67
+
+- **The BALL COLORS screen can no longer crash the game.** If something goes
+  wrong while it is open -- most likely another mod that replaces menus -- it
+  now shows a short message, writes the reason to [ERRS] in the mod menu, and
+  lets you press B to leave. If you have hit a crash opening it, this build
+  will tell us what actually broke.
+
 ## 0.1.66
 
 - **You can now open BALL COLORS from the START menu instead of the PC.** A

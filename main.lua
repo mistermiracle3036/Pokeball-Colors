@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.66"
+  local VERSION = "0.1.67"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -1387,6 +1387,71 @@ return function(mod)
           -- room for both plus a gap inside an 18-column box.  The hint goes:
           -- the arrows drawn either side of the value already say it.
           Font.draw("B: BACK", 16, 120)
+        end
+        G.setColor(1, 1, 1, 1)
+      end
+
+      -- ------------------------------------------------------------------
+      -- A crash in here must not take the GAME down.
+      --
+      -- This screen composes with whatever else the player runs -- UI mods
+      -- that replace menus, graphics mods that own the frame -- and a player
+      -- reported the PC crashing on a mod set nobody here can reproduce.  An
+      -- unhandled error in update or draw is a hard crash whose text the
+      -- player never sees, so the report comes back as "it crashed" and the
+      -- fault stays invisible.
+      --
+      -- So both are wrapped: the first failure is reported to [ERRS] with the
+      -- engine's own message (file and line), the screen switches to a state
+      -- that says so on screen, and B still backs out.  That turns an
+      -- unreproducible crash into a legible one without pretending to fix it.
+      local rawUpdate, rawDraw = self.update, self.draw
+      local screenError = nil
+
+      local function screenFail(where, err)
+        if screenError then return end
+        screenError = tostring(err or "?")
+        local msg = "editor " .. where .. ": " .. screenError
+        mod.log:error("%s", msg)
+        Runtime.reportError("pokeball_colors", msg)
+      end
+
+      function self:update(dt)
+        if screenError then
+          -- Only the way out still responds, so a broken screen is never a
+          -- soft-lock the player has to force-quit out of.
+          local input = game and game.input
+          if input and (input:wasPressed("b") or input:wasPressed("a"))
+             and game.stack then
+            game.stack:pop()
+          end
+          return
+        end
+        local ok, err = pcall(rawUpdate, self, dt)
+        if not ok then screenFail("update", err) end
+      end
+
+      function self:draw()
+        if not screenError then
+          local ok, err = pcall(rawDraw, self)
+          if not ok then screenFail("draw", err) end
+          if not screenError then return end
+        end
+        -- Deliberately the plainest thing that can be drawn: whatever broke
+        -- above may be the very call this would otherwise reuse.
+        local G = love.graphics
+        G.setColor(1, 1, 1, 1)
+        G.rectangle("fill", 0, 0, 160, 144)
+        G.setColor(0, 0, 0, 1)
+        local okFont = pcall(function()
+          Font.draw("BALL COLORS", 8, 8)
+          Font.draw("SEE [ERRS] IN", 8, 40)
+          Font.draw("THE MOD MENU", 8, 56)
+          Font.draw("B: EXIT", 8, 120)
+        end)
+        if not okFont then
+          -- even the font is unavailable: a bar is still a visible signal
+          G.rectangle("fill", 8, 40, 144, 8)
         end
         G.setColor(1, 1, 1, 1)
       end
