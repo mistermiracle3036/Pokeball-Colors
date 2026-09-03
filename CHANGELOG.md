@@ -4,6 +4,12 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.72
+
+Documentation only. The mod-author section described registering a Gen 2 ball
+palette in terms of one specific mod; it now describes the mechanism, which
+is what any ball mod actually needs to know.
+
 ## 0.1.71
 
 **Updating from v0.1.64?** This is a fix release for the ball colour editor

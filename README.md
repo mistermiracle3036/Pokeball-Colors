@@ -190,13 +190,14 @@ and relaunch afterward so the new code is actually live.
   [repo](https://github.com/mistermiracle3036/Too-Many-Balls)) — optional,
   and **confirmed working alongside this mod on both Red and Gold**. Its
   balls colour automatically through `registerColors` on Red/Blue/Yellow.
-- **On Gold, other ball mods need no setup here.** The heal machine reads
-  the colour the game itself uses for a thrown ball, so a ball picks up
-  whatever palette its own mod registered — **Too Many Balls 0.4.2+** owns
-  that side (`exports.owns.ballPalettesGen2`) and exposes
-  `registerBallPalette` for other ball mods to use. A ball nobody has
-  registered throws grey and lights grey, which is consistent rather than
-  broken.
+- **On Gold, Silver and Crystal other ball mods need no setup here.** The
+  heal machine reads the colour the game itself uses for a thrown ball, so a
+  ball picks up whatever palette its own mod registered — colour it correctly
+  on the throw and the machine follows for free. A ball nobody has registered
+  throws grey and lights grey, which is consistent rather than broken.
+  (One mod at a time may own that seam; at the time of writing Too Many Balls
+  declares `exports.owns.ballPalettesGen2` and exposes `registerBallPalette`
+  for others to register through.)
 
 ## For mod authors
 
@@ -225,12 +226,18 @@ Colors apply everywhere this mod renders — the battle toss, the shakes,
 the resting caught ball, and the Pokemon Center heal machine — with no
 extra work per surface.
 
-**This is the Red/Blue/Yellow route.** Gold colours thrown balls itself,
-so `registerColors` does nothing there; on Gold the heal machine reads the
-game's own ball palette instead, which means a ball registered through
-**Too Many Balls 0.4.2+**'s `registerBallPalette` is coloured on the
-machine with no call to this mod at all. Registering in both places is the
-right thing to do, and neither knows or cares about the other.
+**This is the Red/Blue/Yellow route.** Gold, Silver and Crystal colour
+thrown balls from the cart's own palettes, so a mod-added ball takes its
+colour there from whatever palette that mod registered — not from
+`registerColors`. The heal machine reads the same source, so a ball that
+colours correctly on the Gen 2 throw is already correct on the machine
+with no call to this mod at all.
+
+Register in both places. They are independent: neither knows about the
+other, there is no order to get right, and a ball with only one of them
+still works on that generation. If your ball exists on both generations,
+`registerColors` here covers Gen 1 and your Gen 2 palette registration
+covers the rest.
 
 If a ball is thrown with no color registered, this mod logs one warning
 naming that ball id, so a missing registration says so instead of
