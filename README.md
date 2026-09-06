@@ -1,23 +1,8 @@
 # Pokeball Colors
 
-Every ball you throw in **gen1recomp** gets its own color. Under the
-**ADVANCED** color mode, the toss, the wobbles and the resting ball all
-render in that ball's colors instead of the flat palette the background
-happens to be using — a Great Ball throws blue, an Ultra Ball throws
-gold, a Dusk Ball throws near-black with a gold glint.
+For both Gen 1 and Gen 2. Colors all balls and includes a ball colors editor to let you customize the colors however you like.
 
-Covers the five native balls, all nine balls from the **Custom
-Pokeballs** mod, the balls from **Too Many Balls**, and the **Snag Ball**
-from **Snag Quest** — which also gets a Master-Ball-tier throw as a
-bonus.
-
-**Some balls don't have a fixed colour at all.** On **Gold**, Too Many
-Balls' **KECLEON BALL** takes its colour from whatever you throw it at —
-yellow at a Pikachu, pink at a Slowpoke, shiny colours at a shiny — and the
-Pokémon Center then shows it in the colour it was caught with. On Red, Blue
-and Yellow that ball is a fixed green-and-red for now; whether it goes
-dynamic there is its own mod's call. The support for it is in place on both
-(see [For mod authors](#for-mod-authors)).
+Covers all vanilla and mod balls.
 
 ## Design your own balls
 
@@ -37,9 +22,7 @@ including balls other mods have added.
 > mods were enabled.
 
 At the Pokemon Center, the heal machine's balls light up in the colors
-of the ball each party member was caught in — a party of Great Ball
-catches heals blue. (Balls caught before this feature installed show as
-Poke Ball red.)
+of the ball each party member was caught in and will update after colors are changed in the editor.
 
 Purely cosmetic. No catch rates, items, marts or battle logic are
 changed by this mod.
