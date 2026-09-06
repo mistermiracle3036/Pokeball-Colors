@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.71"
+  local VERSION = "0.1.73"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -987,6 +987,7 @@ return function(mod)
       local presetIndex = 1
       local presets = GENERIC_PRESETS
       local restoredAll = false      -- one-shot confirmation on the list
+      local listPaletteCache = {}
       local rgbPart, rgbChannel, rgbStep = "body", 1, 8
       local self = { game = game, isOpaque = true, isModOptions = true }
 
@@ -1057,6 +1058,7 @@ return function(mod)
       local function beginEdit()
         ball = balls[selected]
         if not ball then return end
+        listPaletteCache = {}
         working = editableEntry(ball.id)
         presets = presetsForBall(ball.id)
         presetIndex = matchingPreset(working, presets)
@@ -1109,6 +1111,7 @@ return function(mod)
                 clearSavedEntry(item.id)
               end
               restoredAll = true
+              listPaletteCache = {}
             else
               beginEdit()
             end
@@ -1134,6 +1137,7 @@ return function(mod)
           elseif input:wasPressed("a") then
             rgbStep = rgbStep == 1 and 8 or (rgbStep == 8 and 32 or 1)
           elseif input:wasPressed("b") then
+            presetIndex = matchingPreset(working, presets)
             mode = "edit"
           end
           return
@@ -1159,6 +1163,7 @@ return function(mod)
         local function toggleStyle()
           working.style = working.style == "line" and "outline" or "line"
           persistWorking(ball.id, working)
+          presetIndex = matchingPreset(working, presets)
         end
         if input:wasPressed("up") then
           editRow = editRow > 1 and editRow - 1 or #rows
@@ -1366,37 +1371,82 @@ return function(mod)
         return s:sub(1, cut)
       end
 
+      -- Small true-colour chips use the same post-palette replay as the
+      -- sprite. A separate canvas per screen position prevents deferred
+      -- Gen 1 redraws from all sampling the last colour painted this frame.
+      local chipCanvases = {}
+      local function drawChip(x, y, c)
+        local G = love.graphics
+        local key = x .. ":" .. y
+        local chip = chipCanvases[key]
+        if not chip then
+          chip = { canvas = G.newCanvas(6, 6) }
+          chip.canvas:setFilter("nearest", "nearest")
+          chipCanvases[key] = chip
+        end
+        local canvas = chip.canvas
+        if not sameRgb(chip.color, c) then
+          G.push("all")
+          G.setCanvas(canvas)
+          G.origin()
+          G.setScissor()
+          G.setShader()
+          G.clear(0, 0, 0, 1)
+          G.setColor(c[1] / 255, c[2] / 255, c[3] / 255, 1)
+          G.rectangle("fill", 1, 1, 4, 4)
+          G.pop()
+          chip.color = rgbCopy(c)
+        end
+        G.push("all")
+        G.setShader()
+        G.setColor(1, 1, 1, 1)
+        G.draw(canvas, x, y)
+        G.pop()
+        PaletteFX.markUiSpriteRedraw(canvas, nil, x, y)
+      end
+
       function self:draw()
         local G = love.graphics
+        local gen2 = isGen2(self.game)
         G.setColor(0, 0, 0, 1)
         Font.drawBox(0, 0, 20, 18)
+        -- Use the game's own loaded frame, including the player's Gen 2
+        -- frame choice. Gen 1 keeps its familiar single uninterrupted box.
+        if gen2 then
+          Font.drawBox(0, 0, 20, 3)
+          Font.drawBox(0, 14, 20, 4)
+        end
         if mode == "list" then
           Font.draw("BALL COLORS", 8, 8)
-          if #balls == 0 then
-            Font.draw("NO BALLS FOUND", 16, 32)
-          end
-          local marked = savedOverrides()   -- once, not once per visible row
+          if #balls == 0 then Font.draw("NO BALLS FOUND", 16, 32) end
+          local marked = savedOverrides()
+          local firstY = gen2 and 32 or 24
           for row = 1, VISIBLE_EDITOR_ROWS do
             local i, item = scroll + row, balls[scroll + row]
-            local y = 24 + (row - 1) * 8
+            local y = firstY + (row - 1) * 8
             if item then
               if i == selected then Font.drawCode(Theme.cursor, 8, y) end
               Font.draw(label(item.label, 12), 16, y)
               if marked[item.id] then Font.draw("*", 112, y) end
+              local entry = listPaletteCache[item.id]
+              if not entry then
+                entry = editableEntry(item.id)
+                listPaletteCache[item.id] = entry
+              end
+              drawChip(124, y + 1, entry.body)
+              drawChip(132, y + 1, entry.accent)
+              drawChip(140, y + 1, entry.third)
             elseif i == #balls + 1 then
-              -- the RESTORE ALL row, last in the list
               if i == selected then Font.drawCode(Theme.cursor, 8, y) end
               Font.draw("RESTORE ALL", 16, y)
             end
           end
-          -- More-below marker, the way Trainer Journey marks its scrolling
-          -- lists.  Theme.moreArrow (0xEE) is a filled DOWN triangle and is
-          -- the same tile on both generations -- one of only three arrows
-          -- that actually exist (see the note by drawLeftArrow).  The ball
-          -- list scrolls and had nothing saying so.
+          Font.draw(tostring(selected) .. "/" .. tostring(#balls + 1), 16, 104)
+          -- Theme.moreArrow (0xEE, filled DOWN) is one of only three arrow
+          -- glyphs that exist at the same code on BOTH generations -- see the
+          -- note by drawLeftArrow before reaching for any other.
           if scroll + VISIBLE_EDITOR_ROWS < #balls + 1 then
-            Font.drawCode(Theme.moreArrow or 0x7e, 136,
-              24 + (VISIBLE_EDITOR_ROWS - 1) * 8)
+            Font.drawCode(Theme.moreArrow, 136, 104)
           end
           if restoredAll then
             Font.draw("ALL RESTORED", 16, 120)
@@ -1407,51 +1457,55 @@ return function(mod)
         elseif mode == "edit" then
           Font.draw(label(ball and ball.label, 18), 8, 8)
           local rows = editRows()
-          local styleRowY
+          local gen2Y = { 32, 48, 64, 80, 96, 104 }
+          if gen2 then Font.drawBox(11, 5, 8, 8) end
           for i, row in ipairs(rows) do
-            local y = 24 + (i - 1) * 8
+            local y = gen2 and gen2Y[i] or (24 + (i - 1) * 8)
             if i == editRow then Font.drawCode(Theme.cursor, 8, y) end
             Font.draw(label(row, 9), 16, y)
-            if row == "STYLE" then styleRowY = y end
+            if row == "BODY" or row == "ACCENT" or row == "THIRD" then
+              drawChip(80, y + 1, working[row:lower()])
+            end
           end
-          -- CUSTOM, not a preset name, when the colours on screen match no
-          -- preset.  Opening a ball applies no preset, so naming one
-          -- there described nothing the player could see.
+          -- Recompute after RGB or STYLE edits too: never leave a stale
+          -- preset name attached to a hand-edited palette.
           local presetLabel = presetIndex > 0 and presets[presetIndex]
             and presets[presetIndex].name or "CUSTOM"
-          drawCycler(label(presetLabel, 8), 24, #presets > 0)
-          -- Only Gen 1 has a STYLE row, and it is now the ONLY thing that
-          -- decides where the third colour lands.  The old global band
-          -- toggle is gone: it contradicted this row, since turning it off
-          -- made slot 3 paint nothing while the row still offered a choice.
-          if styleRowY then
-            drawCycler(working.style == "line" and "BAND" or "OUTLINE",
-              104, true)
+          drawCycler(label(presetLabel, 8), gen2 and 32 or 24, #presets > 0)
+          -- Only Gen 1 has a STYLE row, and it is the ONLY thing that decides
+          -- where the third colour lands.  Gen 2 has no banded ball art, so
+          -- slot 3 is always the rim there and the row would be inert.
+          if not gen2 then
+            drawCycler(working.style == "line" and "BAND" or "OUTLINE", 104, true)
           end
-          drawBallPreview(120, 60, working)
-          -- B at 96, not 88.  "A: SELECT" is nine glyphs from x=16 at a flat
-          -- 8px advance, so it ENDS at 88 -- the two hints printed as
-          -- "A: SELECTB: BACK".  One blank column is enough to separate
-          -- them; confirmed on device.  0.1.60 also shortened the label to
-          -- "A: PICK" on the strength of a screenshot that turned out to
-          -- predate this fix -- reverted, the word was never the problem.
+          drawBallPreview(120, gen2 and 72 or 60, working)
+          -- B at 96, not 88: "A: SELECT" is nine glyphs at a flat 8px advance
+          -- and ENDS at 88, so the two hints once printed as "A: SELECTB: BACK".
+          -- One blank column separates them; confirmed on device.
           Font.draw("A: SELECT", 16, 120)
           Font.draw("B: BACK", 96, 120)
         else
           Font.draw(label(ball and ball.label, 18), 8, 8)
-          Font.draw(string.upper(rgbPart) .. " RGB", 8, 24)
+          Font.draw(string.upper(rgbPart) .. " RGB", 8, gen2 and 32 or 24)
+          if gen2 then Font.drawBox(11, 5, 8, 8) end
           local names = { "R", "G", "B" }
           for i = 1, 3 do
             local y = 48 + (i - 1) * 16
             if i == rgbChannel then Font.drawCode(Theme.cursor, 16, y) end
             Font.draw(names[i], 32, y)
-            drawCycler(("%03d"):format(working[rgbPart][i]), y, true, 88)
+            drawCycler(("%03d"):format(working[rgbPart][i]), y, true, gen2 and 80 or 88)
+            -- A monochrome level rail remains readable through Gen 1's
+            -- palette pass. End ticks show the full 0..255 range.
+            G.setColor(0, 0, 0, 1)
+            local railWidth = gen2 and 48 or 56
+            G.rectangle("fill", 32, y + 11, railWidth, 1)
+            G.rectangle("fill", 32, y + 9, 1, 3)
+            G.rectangle("fill", 31 + railWidth, y + 9, 1, 3)
+            local level = math.floor(working[rgbPart][i] * (railWidth - 1) / 255)
+            G.rectangle("fill", 31 + level, y + 9, 3, 3)
           end
-          drawBallPreview(120, 60, working)
+          drawBallPreview(120, gen2 and 72 or 60, working)
           Font.draw("STEP " .. rgbStep .. " (A)", 16, 104)
-          -- "LEFT/RIGHT" ran into "B: BACK" the same way, and there is no
-          -- room for both plus a gap inside an 18-column box.  The hint goes:
-          -- the arrows drawn either side of the value already say it.
           Font.draw("B: BACK", 16, 120)
         end
         G.setColor(1, 1, 1, 1)

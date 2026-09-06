@@ -31,6 +31,13 @@ including balls other mods have added.
 | ![Editing RGB](docs/editor-rgb.png) | ![The style row](docs/editor-style-band.png) |
 | Or set body, accent and third colour by hand, 0-255 on each channel. | On Red, Blue and Yellow, **STYLE** puts the third colour on the seam band or the rim. |
 
+The editor keeps each game's own look: Red, Blue and Yellow retain the compact
+single-frame menu, while Gold, Silver and Crystal use native framed panels.
+Colour chips beside each ball let you compare palettes without opening them.
+Chips beside BODY, ACCENT and THIRD identify each colour, and RGB level rails
+show where a channel sits between 0 and 255. Hand edits display CUSTOM whenever
+they no longer match a named preset.
+
 > **Development Preview:** Pokeball Colors is in active development. Bug
 > reports and ideas are welcome in [GitHub Issues](../../issues) —
 > please include the version number from your load log and which other
@@ -58,8 +65,8 @@ independent colours at once. Gold, Silver and Crystal keep their native ball
 pixel layout while using all three selected colours. **RESTORE**
 removes the saved choice.
 
-Balls added by other mods appear automatically when **SHOW MOD BALLS IN COLOR
-EDITOR** is enabled. Customizing a Kecleon Ball overrides its target-matching
+Balls added by other mods appear automatically. Customizing a Kecleon Ball
+overrides its target-matching
 colour; restoring its default makes it dynamic again.
 
 ## Requirements
