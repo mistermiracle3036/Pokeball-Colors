@@ -21,15 +21,20 @@ dynamic there is its own mod's call. The support for it is in place on both
 
 ## Design your own balls
 
-Open the PC and choose **BALL COLORS**. Every ball in your game is listed,
-including balls other mods have added.
+Open the PC and choose **BALL COLORS** — or move it to the START menu, or
+both, from the mod's options. Every ball in your game is listed, including
+balls other mods have added, each with its three colours beside it.
 
 | | |
 | --- | --- |
+| ![BALL COLORS on the PC](docs/pc-menu.png) | ![The ball list](docs/editor-list.png) |
+| It lives on the PC by default. A mod that replaces the PC? Put it on the START menu instead. | Every ball at a glance, with its body, accent and third colour. **RESTORE ALL** at the bottom puts every ball back to its default. |
 | ![The ball editor](docs/editor-poke-ball.png) | ![A preset applied](docs/editor-rocket-preset.png) |
 | Pick a preset built for that ball — the preview is the real sprite, in your colours. | Presets are tailored per ball, so a Poke Ball offers different looks from an Ultra Ball. |
-| ![Editing RGB](docs/editor-rgb.png) | ![The style row](docs/editor-style-band.png) |
-| Or set body, accent and third colour by hand, 0-255 on each channel. | On Red, Blue and Yellow, **STYLE** puts the third colour on the seam band or the rim. |
+| ![The band style](docs/editor-style-band.png) | ![The outline style](docs/editor-style-outline.png) |
+| On Red, Blue and Yellow, **STYLE** puts the third colour on the seam band… | …or on the rim. Hand-edited colours read **CUSTOM**. |
+| ![Editing RGB](docs/editor-rgb.png) | |
+| Or set body, accent and third colour by hand, 0-255 on each channel. | |
 
 The editor keeps each game's own look: Red, Blue and Yellow retain the compact
 single-frame menu, while Gold, Silver and Crystal use native framed panels.
@@ -53,7 +58,8 @@ changed by this mod.
 
 ## Ball color editor
 
-Open a PC and choose **BALL COLORS**. The wardrobe-style menu lets you choose
+Open a PC (or the START menu, if you moved it there) and choose **BALL
+COLORS**. The wardrobe-style menu lets you choose
 any ball, apply a preset, or edit its body, accent, and third visible colour
 with full 0-255 RGB control. Press A in the RGB editor to change the adjustment
 step between 1, 8, and 32.
@@ -62,8 +68,10 @@ The third colour can be assigned to a seam band or an outer outline. A Game
 Boy object sprite has one transparent palette slot and three visible slots,
 so the band and outline share the third slot and cannot display as two
 independent colours at once. Gold, Silver and Crystal keep their native ball
-pixel layout while using all three selected colours. **RESTORE**
-removes the saved choice.
+pixel layout while using all three selected colours. **RESTORE** puts a
+ball back to its default — this mod's first preset for one of the game's
+own balls, its author's colours for a ball another mod added. **RESTORE
+ALL**, at the bottom of the ball list, does that for every ball at once.
 
 Balls added by other mods appear automatically. Customizing a Kecleon Ball
 overrides its target-matching
@@ -88,11 +96,11 @@ Journey**.
 
 | Ball | Look |
 | ---- | ---- |
-| Poké Ball | Red with a pale highlight, black band |
-| Great Ball | Blue with a pale highlight, black band |
+| Poké Ball | Red with a pale highlight, black rim |
+| Great Ball | Blue with a pale highlight, black rim |
 | Ultra Ball | Two shades of gold with a black outline |
-| Master Ball | Purple with a pale highlight, black band |
-| Safari Ball | Olive green with a black band |
+| Master Ball | Purple with a pale highlight, black rim |
+| Safari Ball | Olive green with a black rim |
 | Quick Ball *(Custom Poké Balls)* | Yellow with deep blue |
 | Timer Ball *(Custom Poké Balls)* | White with red |
 | Net Ball *(Custom Poké Balls)* | Teal |
@@ -107,10 +115,10 @@ Journey**.
 
 Balls from mods this one doesn't know about keep their vanilla colors.
 
-The black band is new in 0.1.15 and applies to the four native balls whose
-art has one. Balls from other mods don't get one until their own mod asks
-for it — see [For mod authors](#for-mod-authors). Turn the band off in the
-options if you prefer the older two-tone look.
+Those are the defaults — every one of them is a preset away from something
+else in the editor, where the **STYLE** row also moves the black from the rim
+to the seam band, per ball. Balls from other mods get a third colour once
+their own mod supplies one — see [For mod authors](#for-mod-authors).
 
 The Master and Ultra Balls keep their signature palette strobe, now in
 their own colors. Poof clouds and every other battle animation are left
@@ -126,6 +134,7 @@ Open **MODS → POKEBALL COLORS → OPTIONS** (F10 mod manager):
 | COLORED BALLS AT POKeMON CENTER | ON | The heal machine's balls use each mon's caught ball (both games) |
 | MY BALL COLORS OVER OTHER MODS | OFF | Win the ball art when another mod supplies its own |
 | RECOLOR BALLS IN GEN 2 GAMES | ON | Gold/Silver/Crystal's own balls use this mod's colors by default |
+| BALL COLORS MENU IS IN | PC | Where the editor is reached from: PC, START MENU, or BOTH. Use START MENU alongside a mod that replaces the PC |
 | DEV: EVERY BALL SOLD IN MARTS | OFF | Every mart stocks every ball in the game |
 
 Three options were removed in 0.1.55, all superseded by the PC editor:
