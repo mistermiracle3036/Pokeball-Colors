@@ -33,8 +33,10 @@ balls other mods have added, each with its three colours beside it.
 | Pick a preset built for that ball — the preview is the real sprite, in your colours. | Presets are tailored per ball, so a Poke Ball offers different looks from an Ultra Ball. |
 | ![The band style](docs/editor-style-band.png) | ![The outline style](docs/editor-style-outline.png) |
 | On Red, Blue and Yellow, **STYLE** puts the third colour on the seam band… | …or on the rim. Hand-edited colours read **CUSTOM**. |
-| ![Editing RGB](docs/editor-rgb.png) | |
-| Or set body, accent and third colour by hand, 0-255 on each channel. | |
+| ![Editing RGB](docs/editor-rgb.png) | ![Editing RGB on Gold](docs/gen2-editor-rgb.png) |
+| Or set body, accent and third colour by hand, 0-255 on each channel — the rail under each channel shows where it sits. | Gold, Silver and Crystal draw the same screens in the game's own framed panels, in whatever frame style you chose. |
+| ![A mod ball at its own colours](docs/gen2-editor-strange-original.png) | ![The list, deep in the mod balls](docs/gen2-list-mod-balls.png) |
+| Balls other mods add show up on their own. **ORIGINAL** is that mod's colour; presets sit beside it. | Thirty-nine balls with Too Many Balls installed — the counter and ▼ keep your place. |
 
 The editor keeps each game's own look: Red, Blue and Yellow retain the compact
 single-frame menu, while Gold, Silver and Crystal use native framed panels.
