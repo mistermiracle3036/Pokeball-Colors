@@ -17,11 +17,6 @@ own presentation while retaining all existing controls and saved colours.
 - Hand-edited RGB and STYLE changes correctly update the preset name to
   CUSTOM when they no longer match a preset.
 
-## 0.1.72
-
-Test build of the change above, as returned by ChatGPT. Superseded on intake
-by 0.1.73: same code, documentation corrections only.
-
 ## 0.1.71
 
 **Updating from v0.1.64?** This is a fix release for the ball colour editor
