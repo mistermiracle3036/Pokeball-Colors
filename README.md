@@ -13,7 +13,7 @@ have added.
 | | |
 | --- | --- |
 | ![BALL COLORS on the PC](docs/pc-menu.png) | ![The ball list](docs/editor-list.png) |
-| It lives on the PC by default. A mod that replaces the PC? Put it on the START menu instead. | Every ball at a glance, with its body, accent and third colour. **RESTORE ALL** at the bottom puts every ball back to its default. |
+| By default the editor is a menu in the PC. This can be updated to be the START menu via mod options. | Every ball at a glance, with its body, accent and third colour. **RESTORE ALL** at the bottom puts every ball back to its default. |
 | ![The ball editor](docs/editor-poke-ball.png) | ![A preset applied](docs/editor-rocket-preset.png) |
 | Pick a preset built for that ball — the preview is the real sprite, in your colours. | Presets are tailored per ball, so a Poke Ball offers different looks from an Ultra Ball. |
 | ![The band style](docs/editor-style-band.png) | ![The outline style](docs/editor-style-outline.png) |
