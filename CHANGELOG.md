@@ -4,6 +4,19 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.73
+
+**Updating from v0.1.71?** The BALL COLORS editor now fits each generation's
+own presentation while retaining all existing controls and saved colours.
+
+- Gold, Silver and Crystal use native framed header, help and preview panels.
+- Red, Blue and Yellow retain the compact editor and familiar single frame.
+- Colour chips show each ball's three colours directly in the scrolling list
+  and beside BODY, ACCENT and THIRD. The list also shows your position.
+- RGB values have level rails, making the channel balance easier to read.
+- Hand-edited RGB and STYLE changes correctly update the preset name to
+  CUSTOM when they no longer match a preset.
+
 ## 0.1.71
 
 **Updating from v0.1.64?** This is a fix release for the ball colour editor

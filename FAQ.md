@@ -7,7 +7,9 @@ Every answer is collapsed. Tap only what you want revealed.
 <details>
 <summary>Where is the ball color editor?</summary>
 
-Open an in-game PC and choose **BALL COLORS**. Pick a whole-ball preset or
+Open an in-game PC and choose **BALL COLORS**. If another mod has replaced
+your PC, set **BALL COLORS MENU IS IN** to START MENU in this mod's options
+and it appears there instead. Pick a whole-ball preset or
 edit BODY, ACCENT and THIRD one RGB channel at a time. Press A on the RGB
 screen to cycle the adjustment step through 1, 8 and 32.
 
@@ -113,9 +115,8 @@ machine simply shows that.
 <summary>What happens if I customize the Kecleon Ball?</summary>
 
 Your saved design wins, so it stops matching the Pokémon it is thrown at.
-Choose **RESTORE DEFAULT** for the Kecleon Ball to remove the override and
-make it dynamic again. The mod-balls option only controls whether it appears
-in the editor; it does not erase an existing saved design.
+Choose **RESTORE** for the Kecleon Ball to remove the override and make it
+dynamic again. Every ball is listed in the editor; nothing needs enabling.
 </details>
 
 <details>
