@@ -36,6 +36,10 @@ At the Pokemon Center, the heal machine's balls light up in the colors of the
 ball each party member was caught in and will update after colors are changed
 in the editor.
 
+On Gen 2, Elm's starter balls match each starter — red for Cyndaquil, blue for
+Totodile, green for Chikorita — and Pokemon preview pictures use each species'
+own colors instead of grey.
+
 Purely cosmetic. No catch rates, items, marts or battle logic are changed by
 this mod.
 
