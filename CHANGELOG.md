@@ -4,7 +4,7 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
-## 0.1.74
+## 0.1.75
 
 **Updating from v0.1.73?** Pokeball Colors now runs on the Gen 3 games:
 FireRed, LeafGreen, Ruby, Sapphire and Emerald.
@@ -18,6 +18,14 @@ FireRed, LeafGreen, Ruby, Sapphire and Emerald.
   entry for it). Pick any of the 12 balls and change its BODY, ACCENT or
   OUTLINE colour, or step through the presets. The ball keeps its own
   shading, and ORIGINAL or RESTORE puts it back exactly as the game drew it.
+
+New since the 0.1.74 test build: the ball colours were checked against all
+five Gen 3 games, not just FireRed and Emerald, and a plain Poke Ball on the
+healing machine now always uses that game's own red.
+
+## 0.1.74
+
+Test build only; everything in it is described under 0.1.75.
 
 ## 0.1.73
 

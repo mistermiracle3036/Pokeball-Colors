@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.74"
+  local VERSION = "0.1.75"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -1717,18 +1717,25 @@ return function(mod)
     -- Sheet columns in order (pokefirered/src/battle_anim_special.c:702, the
     -- table at ball_open.lua:8 maps item -> column).  Each ball's own colours
     -- are split into a BODY ramp and an ACCENT ramp, dark to light, read off
-    -- the extracted FireRed and Emerald sheets (identical in both, 2026-10-24;
-    -- Ruby/Sapphire not yet checked -- CONFIRM).  `bodyRef`/`accentRef` is
-    -- the shade a picked colour replaces; the others keep their lightness
-    -- relative to it.  `center` is the colour the heal machine shows.
+    -- the extracted FireRed and Emerald sheets (identical in both).  All five
+    -- games share them: pret's pokeruby, pokeemerald and pokefirered carry
+    -- byte-identical palettes for all twelve balls, and one extractor
+    -- (src/import/gba/ball_open_extract.lua) bakes every game's sheet, so
+    -- Ruby, Sapphire and LeafGreen expand to these same values (checked
+    -- 2026-10-24; Ultra's PIXELS differ slightly between versions, which a
+    -- by-colour remap does not care about).  `bodyRef`/`accentRef` is the
+    -- shade a picked colour replaces; the others keep their lightness
+    -- relative to it.  `center` is the colour the heal machine shows; nil
+    -- means the machine's own cap colour, read from the game at draw time.
     -- Colours not listed (white, the light grey, the outline) belong to every
     -- ball and are left alone, except the outline, which is OUTLINE.
     local G3_BALLS = {
       { id = "POKE_BALL", item = 4,
         body = { {132,0,0}, {173,0,0}, {214,41,41} }, bodyRef = {132,0,0},
         accent = { {255,156,123} }, accentRef = {255,156,123},
-        -- vanilla's own heal-machine red, so a plain Poke Ball is untouched
-        center = {255,0,0} },
+        -- no `center`: the machine's own red, so a plain Poke Ball is
+        -- untouched on every game whatever that red is
+      },
       { id = "GREAT_BALL", item = 3,
         body = { {99,140,181}, {123,156,222}, {148,181,222}, {181,206,230} },
         bodyRef = {99,140,181},
@@ -1958,19 +1965,20 @@ return function(mod)
       return math.floor(c5 * 255 / 31 + 0.5)
     end
 
-    local function centerColor(ball)
+    local function centerColor(ball, machineRed)
+      local center = ball.center or machineRed
       local e = savedFor(ball)
       if e and type(e.body) == "table" and not sameRgb(e.body, ball.bodyRef) then
-        return shade(ball.center, ball.bodyRef, e.body)
+        return shade(center, ball.bodyRef, e.body)
       end
-      return ball.center
+      return center
     end
 
     local healImgs = {}                       -- col -> { color, [key] = Image }
     local function healImage(ball, fx)
       local idx, pal = Heal._ballIdx, Heal._ballPal
       if not (idx and pal and pal[6]) then return nil end
-      local color = centerColor(ball)
+      local color = centerColor(ball, pal[6])
       local slot = healImgs[ball.col]
       if not (slot and sameRgb(slot.color, color)) then
         slot = { color = color }
