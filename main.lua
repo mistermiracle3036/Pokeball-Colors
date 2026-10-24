@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.73"
+  local VERSION = "0.1.74"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -108,6 +108,12 @@ return function(mod)
   local BattleState = require("src.battle.BattleState")
   local AnimPlayer = require("src.battle.AnimPlayer")
   local Runtime = require("src.mods.Runtime")
+  -- FireRed, LeafGreen, Ruby, Sapphire and Emerald (0.1.74).  Read once, at
+  -- load: the loader takes its own generation from the same call
+  -- (src/mods/Loader.lua:416), and every src.*.game3.* require below is
+  -- refused on a Gen 1/2 boot (Loader.lua:139), so nothing Gen 3 may be
+  -- touched unless this is true.
+  local GEN3 = require("src.core.GameVersion").generation() == 3
   -- Resolves a sheet path for the editor preview.  A plain require, not a
   -- guarded one: Assets is shared by both generations, and reading it as a
   -- bare value is what gen2check cannot follow -- it degrades the site to an
@@ -1621,9 +1627,25 @@ return function(mod)
   -- final entry is the way out and a new row belongs above it.  A positional
   -- guess, deliberately -- matching on the label would mean matching a
   -- localised string.  Worst case it lands one row off, never wrong.
+  local gen3EditorRow                -- set by installGen3, Gen 3 boots only
   mod.hooks:wrap("ui.start_menu.items", function(next_, game, items)
     local out = next_(game, items)
     if type(out) ~= "table" then return out end
+    -- Gen 3 has no ui.pc.items hook at all (it is raised only from Gen 1/2
+    -- PCs), so START is the only door there whatever the option says.
+    if gen3EditorRow then
+      for _, row in ipairs(out) do
+        if row.id == EDITOR_PC_ROW then return out end
+      end
+      -- Above EXIT, matched by its stable id rather than position: FireRed
+      -- rows are { id, label } (src/ui/game3/start_menu.lua:101).
+      local at = #out + 1
+      for i, row in ipairs(out) do
+        if row.id == "exit" then at = i break end
+      end
+      table.insert(out, at, gen3EditorRow())
+      return out
+    end
     if not wantsEntry("start") then return out end
     for _, row in ipairs(out) do
       if row.id == EDITOR_PC_ROW then return out end
@@ -1649,6 +1671,719 @@ return function(mod)
       end
       return vanillaItemPcChoose(menu, ...)
     end
+  end
+
+  -- ------------------------------------------------------------------
+  -- GEN 3 (0.1.74): FireRed, LeafGreen, Ruby, Sapphire, Emerald.
+  --
+  -- Gen 3 already draws all twelve of its balls in full colour, straight
+  -- from the ROM (src/core/game3/battle/ui.lua Ui.ballSheet: 192x48, one
+  -- 16px column per ball, rows closed / opening / open).  So with nothing
+  -- saved this mod leaves every battle exactly as it was, and adds two
+  -- things:
+  --   * the Pokemon Center heal machine, which vanilla draws as one red
+  --     ball in every slot (pokecenter_heal.lua draw_balls), shows each
+  --     party member's own ball colour;
+  --   * BALL COLORS on the START menu recolours a ball's battle art.
+  -- The recoloured art is rebuilt at runtime from the player's own
+  -- extracted cache; no ROM-derived pixels ship in this repo.
+  --
+  -- None of the Gen 1/2 renderers below this block run on Gen 3: they wrap
+  -- modules a FireRed boot never instantiates, and BattleState is a Gen3Compat
+  -- facade there (src/mods/Gen3Compat.lua buildBattleState).
+  -- ------------------------------------------------------------------
+  local function installGen3()
+    local Ui = require("src.core.game3.battle.ui")
+    local BallOpen = require("src.core.game3.battle.ball_open")
+    local Heal = require("src.core.game3.pokecenter_heal")
+    local Stack = require("src.ui.game3.stack")
+
+    local g3Failed = {}
+    local function g3Fail(fmt, ...)
+      local msg = "gen3: " .. string.format(fmt, ...)
+      if g3Failed[msg] then return end
+      g3Failed[msg] = true
+      mod.log:warn("%s", msg)
+      Runtime.reportError("pokeball_colors", msg)
+    end
+
+    local function sameRgb(a, b)
+      return a and b and a[1] == b[1] and a[2] == b[2] and a[3] == b[3]
+    end
+
+    -- The shared dark grey every ball is outlined in.  OUTLINE in the editor.
+    local OUTLINE = { 66, 66, 66 }
+
+    -- Sheet columns in order (pokefirered/src/battle_anim_special.c:702, the
+    -- table at ball_open.lua:8 maps item -> column).  Each ball's own colours
+    -- are split into a BODY ramp and an ACCENT ramp, dark to light, read off
+    -- the extracted FireRed and Emerald sheets (identical in both, 2026-10-24;
+    -- Ruby/Sapphire not yet checked -- CONFIRM).  `bodyRef`/`accentRef` is
+    -- the shade a picked colour replaces; the others keep their lightness
+    -- relative to it.  `center` is the colour the heal machine shows.
+    -- Colours not listed (white, the light grey, the outline) belong to every
+    -- ball and are left alone, except the outline, which is OUTLINE.
+    local G3_BALLS = {
+      { id = "POKE_BALL", item = 4,
+        body = { {132,0,0}, {173,0,0}, {214,41,41} }, bodyRef = {132,0,0},
+        accent = { {255,156,123} }, accentRef = {255,156,123},
+        -- vanilla's own heal-machine red, so a plain Poke Ball is untouched
+        center = {255,0,0} },
+      { id = "GREAT_BALL", item = 3,
+        body = { {99,140,181}, {123,156,222}, {148,181,222}, {181,206,230} },
+        bodyRef = {99,140,181},
+        accent = { {189,41,90}, {222,66,115}, {255,99,140} },
+        accentRef = {222,66,115}, center = {123,156,222} },
+      { id = "SAFARI_BALL", item = 5,
+        body = { {148,173,16}, {165,197,33}, {181,222,49}, {197,247,66} },
+        bodyRef = {148,173,16},
+        accent = { {206,107,41}, {230,165,99}, {255,222,156} },
+        accentRef = {230,165,99}, center = {165,197,33} },
+      { id = "ULTRA_BALL", item = 2,
+        body = { {181,140,16}, {206,173,33}, {230,206,49}, {255,239,66} },
+        bodyRef = {181,140,16},
+        accent = { {25,25,25} }, accentRef = {25,25,25},
+        center = {206,173,33} },
+      { id = "MASTER_BALL", item = 1,
+        body = { {115,16,156}, {140,41,173}, {165,66,189}, {189,90,206} },
+        bodyRef = {115,16,156},
+        accent = { {255,99,140}, {255,148,173}, {255,197,214} },
+        accentRef = {255,99,140}, center = {140,41,173} },
+      { id = "NET_BALL", item = 6,
+        body = { {0,156,107}, {49,189,123} }, bodyRef = {0,156,107},
+        accent = { {99,222,148}, {156,255,173} }, accentRef = {99,222,148},
+        center = {49,189,123} },
+      { id = "DIVE_BALL", item = 7,
+        body = { {0,90,156}, {25,107,173}, {58,123,197}, {90,140,222},
+                 {115,165,230} }, bodyRef = {90,140,222},
+        accent = { {148,197,239}, {181,230,255} }, accentRef = {148,197,239},
+        center = {58,123,197} },
+      { id = "NEST_BALL", item = 8,
+        body = { {0,99,0}, {49,148,16}, {99,197,33}, {156,255,58} },
+        bodyRef = {0,99,0},
+        accent = { {255,123,99}, {255,173,132}, {255,222,173} },
+        accentRef = {255,173,132}, center = {49,148,16} },
+      { id = "REPEAT_BALL", item = 9,
+        body = { {222,99,0}, {230,132,33}, {239,165,66}, {255,197,99} },
+        bodyRef = {222,99,0},
+        accent = { {206,156,8}, {255,255,8} }, accentRef = {255,255,8},
+        center = {230,132,33} },
+      { id = "TIMER_BALL", item = 10,
+        body = { {173,0,0}, {197,49,41}, {222,99,82} }, bodyRef = {173,0,0},
+        accent = { {255,156,123} }, accentRef = {255,156,123},
+        center = {197,49,41} },
+      { id = "LUXURY_BALL", item = 11,
+        body = { {25,25,25}, {49,49,41}, {90,90,82}, {132,132,123},
+                 {181,173,165} }, bodyRef = {49,49,41},
+        accent = { {181,74,25}, {230,74,25}, {255,156,8}, {255,189,58},
+                   {255,222,107} }, accentRef = {255,156,8},
+        center = {49,49,41} },
+      { id = "PREMIER_BALL", item = 12,
+        -- Premier is white all over in vanilla, so its BODY is the white
+        -- and light grey of its own column -- the whole sphere.
+        body = { {148,148,148}, {255,255,255} }, bodyRef = {255,255,255},
+        accent = { {132,0,0}, {173,0,0}, {214,41,41}, {255,156,123} },
+        accentRef = {214,41,41}, center = {255,255,255} },
+    }
+    local BY_ID = {}
+    for col, b in ipairs(G3_BALLS) do
+      b.col = col - 1
+      BY_ID[b.id] = b
+    end
+    -- Editor order: the bag's, by item number (Master first), as Gen 1/2's
+    -- list sorts by item index.
+    local EDIT_ORDER = {}
+    for _, b in ipairs(G3_BALLS) do EDIT_ORDER[#EDIT_ORDER + 1] = b end
+    table.sort(EDIT_ORDER, function(a, b) return a.item < b.item end)
+
+    local function ballForItem(item)
+      local col = BallOpen.ballIdForItem(item)
+      return G3_BALLS[(tonumber(col) or 0) + 1]
+    end
+
+    local function lum(c)
+      return (c[1] * 299 + c[2] * 587 + c[3] * 114) / 1000
+    end
+    local function clamp8(v)
+      v = math.floor(v + 0.5)
+      if v < 0 then return 0 elseif v > 255 then return 255 end
+      return v
+    end
+    -- `src` re-expressed against picked colour `t`: darker than the
+    -- reference scales t down, lighter blends t toward white.
+    local function shade(src, ref, t)
+      local ls, lr = lum(src), lum(ref)
+      if ls <= lr then
+        local k = lr > 0 and ls / lr or 0
+        return { clamp8(t[1] * k), clamp8(t[2] * k), clamp8(t[3] * k) }
+      end
+      local k = lr < 255 and (ls - lr) / (255 - lr) or 0
+      return { clamp8(t[1] + (255 - t[1]) * k),
+               clamp8(t[2] + (255 - t[2]) * k),
+               clamp8(t[3] + (255 - t[3]) * k) }
+    end
+    local function rgbKey(r, g, b) return r * 65536 + g * 256 + b end
+
+    -- colour -> replacement for one ball, or nil when nothing changes.  A
+    -- role left at its own reference colour is left ALONE rather than
+    -- re-derived, so ORIGINAL is byte-identical vanilla.
+    local function remapFor(ball, entry)
+      if not (ball and entry) then return nil end
+      local map, any = {}, false
+      local function paint(list, ref, t)
+        if type(t) ~= "table" or sameRgb(t, ref) then return end
+        for _, s in ipairs(list) do
+          map[rgbKey(s[1], s[2], s[3])] = shade(s, ref, t)
+        end
+        any = true
+      end
+      paint(ball.body, ball.bodyRef, entry.body)
+      paint(ball.accent, ball.accentRef, entry.accent)
+      local third = entry.outline or entry.line
+      if type(third) == "table" and not sameRgb(third, OUTLINE) then
+        map[rgbKey(OUTLINE[1], OUTLINE[2], OUTLINE[3])] = rgbCopy(third)
+        any = true
+      end
+      return any and map or nil
+    end
+
+    -- The player's extracted sheet, read the way Ui.ballSheet reads it
+    -- (battle/ui.lua:2709).
+    local sheetBytes, sheetW, sheetH
+    local function readSheet()
+      if sheetBytes ~= nil then return sheetBytes or nil end
+      sheetBytes = false
+      local d = BallOpen.data()
+      if not (d and d.ballSheet and d.ballSheetW and d.ballSheetH) then
+        g3Fail("no ball sheet in the ball_open manifest; re-import the ROM")
+        return nil
+      end
+      -- The engine's own cache root, never a copy of it: modkit refuses a
+      -- mod that names the generated tree (MK301).
+      local okE, Extract = pcall(require, "src.import.gba.extract_island1")
+      if not (okE and Extract and Extract.CACHE_ROOT) then
+        g3Fail("no GBA cache root (extract_island1.CACHE_ROOT)")
+        return nil
+      end
+      local root = Extract.CACHE_ROOT .. "/" .. BallOpen.CACHE_SUB
+      local okD, Dataset = pcall(require, "src.core.game3.dataset")
+      local cache = okD and Dataset and Dataset.cache and Dataset.cache()
+      local rgba = cache and cache.read and cache:read(root .. "/" .. d.ballSheet)
+      if type(rgba) ~= "string" or #rgba < d.ballSheetW * d.ballSheetH * 4 then
+        g3Fail("ball sheet %s unreadable", tostring(d.ballSheet))
+        return nil
+      end
+      sheetBytes, sheetW, sheetH = rgba, d.ballSheetW, d.ballSheetH
+      return sheetBytes
+    end
+
+    -- Recolour columns [x0, x0+w) of the sheet; maps[col] = remap or nil.
+    local function bakeImage(x0, w, maps)
+      local src = readSheet()
+      if not src then return nil end
+      local out, n = {}, 0
+      for y = 0, sheetH - 1 do
+        for x = x0, x0 + w - 1 do
+          local o = (y * sheetW + x) * 4
+          local r, g, b, a = src:byte(o + 1, o + 4)
+          local map = maps[math.floor(x / 16)]
+          local c = a > 0 and map and map[rgbKey(r, g, b)]
+          if c then r, g, b = c[1], c[2], c[3] end
+          n = n + 1
+          out[n] = string.char(r, g, b, a)
+        end
+      end
+      local okI, data = pcall(love.image.newImageData, w, sheetH, "rgba8",
+        table.concat(out))
+      if not okI then
+        g3Fail("ball art: %s", tostring(data))
+        return nil
+      end
+      local img = love.graphics.newImage(data)
+      img:setFilter("nearest", "nearest")
+      return img
+    end
+
+    local function savedFor(ball)
+      return mod.options:get("enabled") and savedEntry(ball.id) or nil
+    end
+
+    -- BATTLE: Ui.ballQuad reads Ui.ballSheet() on every draw (ui.lua:2735),
+    -- so swapping the image it returns recolours the throw, the shakes, the
+    -- send-out and the resting ball at once.  Same 192x48 size, so the
+    -- engine's cached quads stay valid.  Rebuilt only when a saved entry
+    -- changes: savedEntry hands back the same table until invalidated.
+    local bakedSheet, bakedFrom = nil, {}
+    local function currentSheet()
+      local changed, anySaved = false, false
+      for _, b in ipairs(G3_BALLS) do
+        local e = savedFor(b)
+        if e then anySaved = true end
+        if bakedFrom[b.col] ~= (e or false) then changed = true end
+      end
+      if not anySaved then return nil end
+      if bakedSheet and not changed then return bakedSheet end
+      local maps = {}
+      for _, b in ipairs(G3_BALLS) do
+        local e = savedFor(b)
+        bakedFrom[b.col] = e or false
+        maps[b.col] = remapFor(b, e)
+      end
+      readSheet()
+      bakedSheet = sheetW and bakeImage(0, sheetW, maps) or nil
+      return bakedSheet
+    end
+
+    Ui._pbcOriginals = Ui._pbcOriginals or { ballSheet = Ui.ballSheet }
+    local vanillaBallSheet = Ui._pbcOriginals.ballSheet
+    Ui.ballSheet = function(...)
+      local img = currentSheet()
+      if img then return img end
+      return vanillaBallSheet(...)
+    end
+
+    -- CENTER.  draw_balls (pokecenter_heal.lua:466) draws one image in every
+    -- slot.  The wrap lets the engine load its art and claim the frame with
+    -- an empty slot list, then draws each slot itself from the same 8x8
+    -- indexed ball with slots 5/6/7 (the red cap) recoloured, and the same
+    -- glow pret runs over the palette while the machine flashes.
+    local STATE_FLASH_A, STATE_FLASH_B, STATE_DUMMY = 2, 3, 5 -- pokecenter_heal.lua:42
+    local GLOW_K = { 16, 12, 8, 0 }           -- pokefirered/src/field_effect.c:900
+    local GLOW_INDICES = { 8, 6, 2, 5, 3 }    -- pokefirered/src/field_effect.c:949
+    local GLOW_LEAD = { 3, 2, 1, 0, 0 }
+    local function multiplyInverted(c8, k)    -- field_effect.c:640, as pokecenter_heal.lua:171
+      local c5 = math.floor(c8 * 31 / 255 + 0.5)
+      c5 = c5 + math.floor(((31 - c5) * k) / 16)
+      if c5 > 31 then c5 = 31 end
+      return math.floor(c5 * 255 / 31 + 0.5)
+    end
+
+    local function centerColor(ball)
+      local e = savedFor(ball)
+      if e and type(e.body) == "table" and not sameRgb(e.body, ball.bodyRef) then
+        return shade(ball.center, ball.bodyRef, e.body)
+      end
+      return ball.center
+    end
+
+    local healImgs = {}                       -- col -> { color, [key] = Image }
+    local function healImage(ball, fx)
+      local idx, pal = Heal._ballIdx, Heal._ballPal
+      if not (idx and pal and pal[6]) then return nil end
+      local color = centerColor(ball)
+      local slot = healImgs[ball.col]
+      if not (slot and sameRgb(slot.color, color)) then
+        slot = { color = color }
+        healImgs[ball.col] = slot
+      end
+      local glowing = fx.state == STATE_FLASH_A or fx.state == STATE_FLASH_B
+      local rolling = fx.state == STATE_FLASH_A
+      local counter = (fx.counter or 0) % 4
+      local key = glowing and ((rolling and "a" or "b") .. counter) or "n"
+      if slot[key] then return slot[key] end
+
+      local base = {}
+      for i = 0, 15 do base[i] = pal[i] or { 0, 0, 0 } end
+      if not sameRgb(color, pal[6]) then
+        for _, i in ipairs({ 5, 6, 7 }) do base[i] = shade(pal[i], pal[6], color) end
+      end
+      local phases = {}
+      if glowing then
+        for i = 1, #GLOW_INDICES do
+          phases[GLOW_INDICES[i]] = (counter + (rolling and GLOW_LEAD[i] or 0)) % 4
+        end
+      end
+      local data = love.image.newImageData(8, 8)
+      data:mapPixel(function(x, y)
+        local v = idx[y * 8 + x + 1] or 0
+        if v == 0 then return 0, 0, 0, 0 end
+        local c = base[v]
+        local p = phases[v]
+        if p then
+          local k = GLOW_K[p + 1] or 0
+          c = { multiplyInverted(c[1], k), multiplyInverted(c[2], k), c[3] }
+        end
+        return c[1] / 255, c[2] / 255, c[3] / 255, 1
+      end)
+      local img = love.graphics.newImage(data)
+      img:setFilter("nearest", "nearest")
+      slot[key] = img
+      return img
+    end
+
+    local function liveParty()
+      local R = package.loaded["src.core.game3.runtime"]
+      local s = R and R.getSession and R.getSession()
+      if not s then
+        local F = package.loaded["src.core.game3.field"]
+        s = F and F._session
+      end
+      return s and type(s.party) == "table" and s.party or nil
+    end
+
+    Heal._pbcOriginals = Heal._pbcOriginals or { drawBalls = Heal.drawBalls }
+    local vanillaDrawBalls = Heal._pbcOriginals.drawBalls
+    Heal.drawBalls = function(camX, camY, ...)
+      local fx = Heal._fx
+      if not (fx and type(fx.balls) == "table" and mod.options:get("enabled")
+              and mod.options:get("center_balls")) then
+        return vanillaDrawBalls(camX, camY, ...)
+      end
+      local balls = fx.balls
+      fx.balls = {}
+      local ok, err = pcall(vanillaDrawBalls, camX, camY, ...)
+      fx.balls = balls
+      if not ok then
+        g3Fail("heal machine: %s", tostring(err))
+        return
+      end
+      if fx.state >= STATE_DUMMY then return end
+      local party = liveParty() or {}
+      love.graphics.setColor(1, 1, 1, 1)
+      for i, b in ipairs(balls) do
+        local mon = party[i]
+        local ball = ballForItem(mon and (mon.pokeball or mon.ball) or 4)
+        local img = ball and healImage(ball, fx)
+        if img then love.graphics.draw(img, b.x, b.y) end
+      end
+    end
+
+    -- EDITOR.  A layer on the FireRed UI stack (src/ui/game3/stack.lua):
+    -- the HUD hands it input (hud.lua update_top_menu) and the UI pass draws
+    -- it (ui_pass.lua), both as plain module calls.  Same flow as Gen 1/2's
+    -- editor -- list, then PRESET / BODY / ACCENT / OUTLINE / RESTORE /
+    -- DONE, then RGB -- with no STYLE row: Gen 3's third colour is only
+    -- ever the outline.
+    local LAYER = "pokeball_colors_editor"
+    local VISIBLE = 9
+    local EDIT_ROWS = { "PRESET", "BODY", "ACCENT", "OUTLINE", "RESTORE", "DONE" }
+    local PART = { BODY = "body", ACCENT = "accent", OUTLINE = "third" }
+    local Editor = { isMenu = true }
+    local ed
+
+    local function se(id)
+      pcall(function()
+        require("src.core.game3.audio").playSe(
+          require("src.core.game3.se_ids").resolve(id))
+      end)
+    end
+
+    local function originalOf(ball)
+      return { body = rgbCopy(ball.bodyRef), accent = rgbCopy(ball.accentRef),
+               third = rgbCopy(OUTLINE) }
+    end
+
+    local function presetsFor(ball)
+      local rows = BALL_PRESETS[ball.id] or TMB_PRESETS[ball.id]
+      local list = {}
+      if rows then
+        for i, row in ipairs(rows) do
+          list[i] = { name = row[1], body = row[2], accent = row[3], third = row[4] }
+        end
+      else
+        for i, g in ipairs(GENERIC_PRESETS) do list[i] = g end
+      end
+      for _, p in ipairs(MOD_PRESETS[ball.id] or {}) do list[#list + 1] = p end
+      -- These colourways were written for the Game Boy, where a black third
+      -- colour is simply "the normal rim".  Gen 3's normal rim is OUTLINE,
+      -- so black keeps the ball's own outline instead of drawing a heavier
+      -- one (seen on the first Lua render, 2026-10-24).
+      local out = {}
+      for i, p in ipairs(list) do
+        out[i] = { name = p.name, body = p.body, accent = p.accent,
+                   third = sameRgb(p.third, BLACK) and rgbCopy(OUTLINE) or p.third }
+      end
+      local own = originalOf(ball)
+      own.name = "ORIGINAL"
+      out[#out + 1] = own
+      return out
+    end
+
+    local function workingFor(ball)
+      local e = savedEntry(ball.id)
+      if not e then return originalOf(ball) end
+      return { body = rgbCopy(e.body), accent = rgbCopy(e.accent),
+               third = rgbCopy(e.outline or e.line or OUTLINE) }
+    end
+
+    local function matching(w, list)
+      for i, p in ipairs(list) do
+        if sameRgb(p.body, w.body) and sameRgb(p.accent, w.accent)
+           and sameRgb(p.third, w.third) then
+          return i
+        end
+      end
+      return 0
+    end
+
+    local function persist()
+      saveEntry(ed.ball.id, { body = ed.w.body, accent = ed.w.accent,
+                              outline = ed.w.third }, "outline")
+      ed.preview = nil
+    end
+
+    local function nameOf(ball)
+      local ok, D = pcall(require, "src.core.game3.items_data")
+      local name = ok and D and D.displayName and D.displayName(ball.item)
+      return type(name) == "string" and name ~= "" and name
+        or (ball.id:gsub("_", " "))
+    end
+
+    local function previewImage()
+      if ed.preview then return ed.preview end
+      readSheet()
+      if not sheetW then return nil end
+      local maps = { [ed.listBall.col] = remapFor(ed.listBall, ed.w) }
+      -- bakeImage keys maps by absolute column; one column wide from x0.
+      ed.preview = bakeImage(ed.listBall.col * 16, 16, maps)
+      return ed.preview
+    end
+
+    local function selectBall(i)
+      ed.selected = i
+      if i <= ed.scroll then ed.scroll = i - 1 end
+      if i > ed.scroll + VISIBLE then ed.scroll = i - VISIBLE end
+      local ball = EDIT_ORDER[i]
+      if ball then
+        ed.listBall = ball
+        ed.w = workingFor(ball)
+        ed.preview = nil
+      end
+    end
+
+    local function close()
+      Stack.pop(LAYER)
+      ed = nil
+      se("SE_SELECT")
+    end
+
+    function Editor.handleInput(input)
+      if not (ed and input) then return end
+      local pressed = function(k) return input:wasPressed(k) end
+      if ed.mode == "list" then
+        local last = #EDIT_ORDER + 1             -- RESTORE ALL
+        if pressed("up") then
+          ed.restoredAll = false
+          selectBall(ed.selected > 1 and ed.selected - 1 or last)
+          se("SE_SELECT")
+        elseif pressed("down") then
+          ed.restoredAll = false
+          selectBall(ed.selected < last and ed.selected + 1 or 1)
+          se("SE_SELECT")
+        elseif pressed("a") then
+          se("SE_SELECT")
+          if ed.selected > #EDIT_ORDER then
+            for _, b in ipairs(G3_BALLS) do clearSavedEntry(b.id) end
+            ed.restoredAll = true
+          else
+            ed.ball = ed.listBall
+            ed.w = workingFor(ed.ball)
+            ed.presets = presetsFor(ed.ball)
+            ed.presetIndex = matching(ed.w, ed.presets)
+            ed.mode, ed.row = "edit", 1
+          end
+        elseif pressed("b") then
+          close()
+        end
+        return
+      end
+
+      if ed.mode == "rgb" then
+        local part = ed.w[ed.part]
+        if pressed("up") then
+          ed.channel = ed.channel > 1 and ed.channel - 1 or 3
+          se("SE_SELECT")
+        elseif pressed("down") then
+          ed.channel = ed.channel < 3 and ed.channel + 1 or 1
+          se("SE_SELECT")
+        elseif pressed("left") or pressed("right") then
+          local d = pressed("right") and ed.step or -ed.step
+          part[ed.channel] = math.max(0, math.min(255, part[ed.channel] + d))
+          persist()
+        elseif pressed("a") then
+          ed.step = ed.step == 1 and 8 or (ed.step == 8 and 32 or 1)
+          se("SE_SELECT")
+        elseif pressed("b") then
+          ed.presetIndex = matching(ed.w, ed.presets)
+          ed.mode = "edit"
+          se("SE_SELECT")
+        end
+        return
+      end
+
+      local kind = EDIT_ROWS[ed.row]
+      local function stepPreset(dir)
+        local n = #ed.presets
+        if n == 0 then return end
+        if ed.presetIndex == 0 then
+          ed.presetIndex = dir > 0 and 1 or n
+        else
+          ed.presetIndex = ((ed.presetIndex - 1 + dir) % n) + 1
+        end
+        local p = ed.presets[ed.presetIndex]
+        ed.w = { body = rgbCopy(p.body), accent = rgbCopy(p.accent),
+                 third = rgbCopy(p.third) }
+        persist()
+      end
+      if pressed("up") then
+        ed.row = ed.row > 1 and ed.row - 1 or #EDIT_ROWS
+        se("SE_SELECT")
+      elseif pressed("down") then
+        ed.row = ed.row < #EDIT_ROWS and ed.row + 1 or 1
+        se("SE_SELECT")
+      elseif (pressed("left") or pressed("right")) and kind == "PRESET" then
+        stepPreset(pressed("right") and 1 or -1)
+        se("SE_SELECT")
+      elseif pressed("a") then
+        se("SE_SELECT")
+        if kind == "PRESET" then
+          stepPreset(1)
+        elseif PART[kind] then
+          ed.part, ed.channel, ed.mode = PART[kind], 1, "rgb"
+        elseif kind == "RESTORE" then
+          clearSavedEntry(ed.ball.id)
+          ed.w = workingFor(ed.ball)
+          ed.presetIndex = matching(ed.w, ed.presets)
+          ed.preview = nil
+        elseif kind == "DONE" then
+          ed.mode = "list"
+        end
+      elseif pressed("b") then
+        ed.mode = "list"
+        se("SE_SELECT")
+      end
+    end
+
+    local function swatch(c, x, y)
+      local G = love.graphics
+      G.setColor(0.25, 0.25, 0.25, 1)
+      G.rectangle("fill", x, y, 14, 10)
+      G.setColor(c[1] / 255, c[2] / 255, c[3] / 255, 1)
+      G.rectangle("fill", x + 1, y + 1, 12, 8)
+      G.setColor(1, 1, 1, 1)
+    end
+
+    local previewQuad                          -- every preview is 16x48
+    local function drawEditor()
+      local Window = require("src.ui.game3.window")
+      local G = love.graphics
+      G.setColor(0.94, 0.95, 0.97, 1)
+      G.rectangle("fill", 0, 0, 240, 160)
+      G.setColor(1, 1, 1, 1)
+      -- Left: the ball list, or the edit rows.  Content px x 8..112, y 8..152.
+      Window.stdFrame(Window.template(1, 1, 13, 18))
+      -- Right top: name + the real ball.  px x 128..232, y 8..72.
+      Window.stdFrame(Window.template(16, 1, 13, 8))
+      -- Right bottom: what A does, the preset, or the RGB values.
+      Window.stdFrame(Window.template(16, 11, 13, 8))
+
+      local rowY = function(r) return 8 + (r - 1) * 15 end
+      if ed.mode == "list" then
+        for r = 1, VISIBLE do
+          local i = ed.scroll + r
+          local label
+          if i <= #EDIT_ORDER then label = nameOf(EDIT_ORDER[i])
+          elseif i == #EDIT_ORDER + 1 then label = "RESTORE ALL"
+          end
+          if not label then break end
+          if i == ed.selected then Window.cursorPx(8, rowY(r)) end
+          Window.printPx(label, 16, rowY(r))
+          local b = EDIT_ORDER[i]
+          if b and savedEntry(b.id) then
+            swatch(savedEntry(b.id).body, 96, rowY(r) + 3)
+          end
+        end
+      else
+        for r, label in ipairs(EDIT_ROWS) do
+          if r == ed.row then Window.cursorPx(8, rowY(r)) end
+          Window.printPx(label, 16, rowY(r))
+          local part = PART[label]
+          if part then swatch(ed.w[part], 96, rowY(r) + 3) end
+        end
+      end
+
+      local ball = ed.mode == "list" and ed.listBall or ed.ball
+      if ball and ed.selected <= #EDIT_ORDER or ed.mode ~= "list" then
+        Window.printPx(nameOf(ball), 128, 8)
+        local img = previewImage()
+        if img then
+          G.setColor(1, 1, 1, 1)
+          -- closed frame at 3x, centred in the 104px-wide panel
+          previewQuad = previewQuad or G.newQuad(0, 0, 16, 16, img:getDimensions())
+          G.draw(img, previewQuad, 156, 24, 0, 3, 3)
+        end
+      end
+
+      local lines
+      if ed.mode == "list" then
+        if ed.selected > #EDIT_ORDER then
+          lines = ed.restoredAll and { "ALL RESTORED" } or { "A: RESTORE ALL", "B: EXIT" }
+        else
+          lines = { "A: EDIT", "B: EXIT" }
+        end
+      elseif ed.mode == "edit" then
+        local kind = EDIT_ROWS[ed.row]
+        if kind == "PRESET" then
+          local p = ed.presets[ed.presetIndex]
+          -- The panel is 96px of text; LEFT and RIGHT step it too.
+          lines = { p and p.name or "CUSTOM", "A: NEXT" }
+        elseif PART[kind] then
+          lines = { "A: SET COLOR" }
+        elseif kind == "RESTORE" then
+          lines = { "A: USE ITS OWN", "COLORS" }
+        else
+          lines = { "A: BACK" }
+        end
+      end
+      if lines then
+        for i, s in ipairs(lines) do Window.printPx(s, 136, 88 + (i - 1) * 15) end
+      else
+        local part = ed.w[ed.part]
+        for i, ch in ipairs({ "R", "G", "B" }) do
+          if i == ed.channel then Window.cursorPx(128, 88 + (i - 1) * 15) end
+          Window.printPx(ch .. " " .. tostring(part[i]), 136, 88 + (i - 1) * 15)
+        end
+        Window.printPx("A: STEP " .. tostring(ed.step), 136, 133)
+      end
+    end
+
+    function Editor.draw()
+      if not ed then return end
+      local ok, err = pcall(drawEditor)
+      love.graphics.setColor(1, 1, 1, 1)
+      if not ok then g3Fail("editor draw: %s", tostring(err)) end
+    end
+
+    local function openEditor()
+      ed = { mode = "list", selected = 1, scroll = 0, row = 1,
+             channel = 1, step = 8, presets = {}, presetIndex = 0 }
+      selectBall(1)
+      Stack.push(LAYER, Editor, { hideBelow = true, fullscreen = true,
+                                  isMenu = true })
+    end
+
+    gen3EditorRow = function()
+      return { id = EDITOR_PC_ROW, label = "BALL COLORS",
+               onSelect = function() openEditor() end }
+    end
+
+    -- Gen 3 raises game.ready at boot, BEFORE the save is read
+    -- (src/core/Game3.lua:255 vs :541), so the override cache is dropped
+    -- again once the save that owns it is in.
+    local function freshSave()
+      invalidateOverrides()
+      bakedSheet, bakedFrom, healImgs = nil, {}, {}
+      sheetBytes, sheetW, sheetH = nil, nil, nil
+    end
+    mod.events:on("game.ready", freshSave)
+    mod.events:on("save.loaded", freshSave)
+    mod.events:on("save.created", freshSave)
+  end
+
+  if GEN3 then
+    installGen3()
+    mod.log:info("pokeball_colors %s loaded (Gen 3)", VERSION)
+    return
   end
 
   -- One warning per unknown ball id actually seen on screen, so a mod

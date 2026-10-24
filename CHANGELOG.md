@@ -4,6 +4,21 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
+## 0.1.74
+
+**Updating from v0.1.73?** Pokeball Colors now runs on the Gen 3 games:
+FireRed, LeafGreen, Ruby, Sapphire and Emerald.
+
+- Gen 3 already draws every ball in its own colours, so battles look
+  exactly as they did until you change something.
+- **Pokemon Center:** the healing machine shows each of your Pokemon's own
+  ball colour, instead of the same red ball in every slot. Turn it off with
+  "Colored balls at POKeMON CENTER".
+- **BALL COLORS** is on the START menu in Gen 3 (those games have no PC
+  entry for it). Pick any of the 12 balls and change its BODY, ACCENT or
+  OUTLINE colour, or step through the presets. The ball keeps its own
+  shading, and ORIGINAL or RESTORE puts it back exactly as the game drew it.
+
 ## 0.1.73
 
 **Updating from v0.1.71?** The BALL COLORS editor now fits each generation's

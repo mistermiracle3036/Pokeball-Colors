@@ -1,14 +1,15 @@
 {
   "id": "pokeball_colors",
   "name": "Pokeball Colors",
-  "version": "0.1.73",
+  "version": "0.1.74",
   "api": 2,
   "entry": "main.lua",
   "profile": "content",
   "category": "COSMETIC",
   "games": [
     "gen1",
-    "gen2"
+    "gen2",
+    "gen3"
   ],
   "game_version": ">=0.1.38 <2.0.0",
   "priority": 200,
@@ -23,5 +24,5 @@
   ],
   "conflicts": [],
   "github": "mistermiracle3036/Pokeball-Colors",
-  "description": "Per-ball throw, preview, heal-machine, and player-customized colors across Gen 1 and Gen 2."
+  "description": "Per-ball throw, preview, heal-machine, and player-customized colors across Gen 1, Gen 2 and Gen 3."
 }
