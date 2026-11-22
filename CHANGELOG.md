@@ -4,10 +4,14 @@ All notable changes to Pokeball Colors are documented here. Format
 follows [Keep a Changelog](https://keepachangelog.com); the top heading
 always matches the version in `manifest.json`.
 
-## 0.1.75
+## 0.1.76
 
 **Updating from v0.1.73?** Pokeball Colors now runs on the Gen 3 games:
 FireRed, LeafGreen, Ruby, Sapphire and Emerald.
+
+New in this version: on Gold, Silver and Crystal the BALL COLORS editor now
+looks like the game's own menus. The button hints are gone, and its lists
+are spaced two lines apart like the Mart. Red, Blue and Yellow are unchanged.
 
 - Gen 3 already draws every ball in its own colours, so battles look
   exactly as they did until you change something.
@@ -19,9 +23,13 @@ FireRed, LeafGreen, Ruby, Sapphire and Emerald.
   OUTLINE colour, or step through the presets. The ball keeps its own
   shading, and ORIGINAL or RESTORE puts it back exactly as the game drew it.
 
-New since the 0.1.74 test build: the ball colours were checked against all
+Since the 0.1.74 test build: the ball colours were checked against all
 five Gen 3 games, not just FireRed and Emerald, and a plain Poke Ball on the
 healing machine now always uses that game's own red.
+
+## 0.1.75
+
+Test build only; everything in it is described under 0.1.76.
 
 ## 0.1.74
 

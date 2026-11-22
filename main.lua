@@ -67,7 +67,7 @@
 -- through), and the GEN1/MODERN catch math (pure cosmetics).
 
 return function(mod)
-  local VERSION = "0.1.75"
+  local VERSION = "0.1.76"
   mod.exports.version = VERSION
 
   mod.options:define({
@@ -997,10 +997,18 @@ return function(mod)
       local rgbPart, rgbChannel, rgbStep = "body", 1, 8
       local self = { game = game, isOpaque = true, isModOptions = true }
 
+      -- Gold/Silver/Crystal space list rows two apart, like the Mart, so five
+      -- fit between the header and the "n/N" line (REQUESTS 1054, developer's
+      -- pick 2026-11-21).  Red/Blue/Yellow keep their approved compact list.
+      local function visibleRows()
+        return isGen2(self.game) and 5 or VISIBLE_EDITOR_ROWS
+      end
+
       local function ensureVisible()
+        local n = visibleRows()
         if selected <= scroll then scroll = selected - 1 end
-        if selected > scroll + VISIBLE_EDITOR_ROWS then
-          scroll = selected - VISIBLE_EDITOR_ROWS
+        if selected > scroll + n then
+          scroll = selected - n
         end
       end
 
@@ -1426,10 +1434,11 @@ return function(mod)
           Font.draw("BALL COLORS", 8, 8)
           if #balls == 0 then Font.draw("NO BALLS FOUND", 16, 32) end
           local marked = savedOverrides()
-          local firstY = gen2 and 32 or 24
-          for row = 1, VISIBLE_EDITOR_ROWS do
+          local shown = visibleRows()
+          local pitch = gen2 and 16 or 8
+          for row = 1, shown do
             local i, item = scroll + row, balls[scroll + row]
-            local y = firstY + (row - 1) * 8
+            local y = 24 + (row - 1) * pitch
             if item then
               if i == selected then Font.drawCode(Theme.cursor, 8, y) end
               Font.draw(label(item.label, 12), 16, y)
@@ -1451,10 +1460,14 @@ return function(mod)
           -- Theme.moreArrow (0xEE, filled DOWN) is one of only three arrow
           -- glyphs that exist at the same code on BOTH generations -- see the
           -- note by drawLeftArrow before reaching for any other.
-          if scroll + VISIBLE_EDITOR_ROWS < #balls + 1 then
+          if scroll + shown < #balls + 1 then
             Font.drawCode(Theme.moreArrow, 136, 104)
           end
-          if restoredAll then
+          -- Gen 2 shows no button hints (REQUESTS 1054): the bottom box holds
+          -- only a sentence, and only when there is something to say.
+          if gen2 then
+            if restoredAll then Font.draw("All restored.", 16, 120) end
+          elseif restoredAll then
             Font.draw("ALL RESTORED", 16, 120)
           else
             Font.draw("A: EDIT", 16, 120)
@@ -1463,7 +1476,9 @@ return function(mod)
         elseif mode == "edit" then
           Font.draw(label(ball and ball.label, 18), 8, 8)
           local rows = editRows()
-          local gen2Y = { 32, 48, 64, 80, 96, 104 }
+          -- Two apart on Gen 2, RESTORE and DONE included (REQUESTS 1054).  Six
+          -- rows that far apart only fit if they start right under the header.
+          local gen2Y = { 24, 40, 56, 72, 88, 104 }
           if gen2 then Font.drawBox(11, 5, 8, 8) end
           for i, row in ipairs(rows) do
             local y = gen2 and gen2Y[i] or (24 + (i - 1) * 8)
@@ -1477,7 +1492,7 @@ return function(mod)
           -- preset name attached to a hand-edited palette.
           local presetLabel = presetIndex > 0 and presets[presetIndex]
             and presets[presetIndex].name or "CUSTOM"
-          drawCycler(label(presetLabel, 8), gen2 and 32 or 24, #presets > 0)
+          drawCycler(label(presetLabel, 8), gen2 and gen2Y[1] or 24, #presets > 0)
           -- Only Gen 1 has a STYLE row, and it is the ONLY thing that decides
           -- where the third colour lands.  Gen 2 has no banded ball art, so
           -- slot 3 is always the rim there and the row would be inert.
@@ -1488,8 +1503,10 @@ return function(mod)
           -- B at 96, not 88: "A: SELECT" is nine glyphs at a flat 8px advance
           -- and ENDS at 88, so the two hints once printed as "A: SELECTB: BACK".
           -- One blank column separates them; confirmed on device.
-          Font.draw("A: SELECT", 16, 120)
-          Font.draw("B: BACK", 96, 120)
+          if not gen2 then
+            Font.draw("A: SELECT", 16, 120)
+            Font.draw("B: BACK", 96, 120)
+          end
         else
           Font.draw(label(ball and ball.label, 18), 8, 8)
           Font.draw(string.upper(rgbPart) .. " RGB", 8, gen2 and 32 or 24)
@@ -1511,8 +1528,14 @@ return function(mod)
             G.rectangle("fill", 31 + level, y + 9, 3, 3)
           end
           drawBallPreview(120, gen2 and 72 or 60, working)
-          Font.draw("STEP " .. rgbStep .. " (A)", 16, 104)
-          Font.draw("B: BACK", 16, 120)
+          if gen2 then
+            -- The step size is still worth knowing; said as a sentence in
+            -- the bottom box, not as a button hint (REQUESTS 1054).
+            Font.draw("Changes by " .. rgbStep .. ".", 16, 120)
+          else
+            Font.draw("STEP " .. rgbStep .. " (A)", 16, 104)
+            Font.draw("B: BACK", 16, 120)
+          end
         end
         G.setColor(1, 1, 1, 1)
       end
